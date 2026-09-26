@@ -461,7 +461,28 @@ class FeeManagementController extends Controller
     public function editPayment($id): View
     {
         $payment = \App\Models\FeePayment::with(['feeManagement.admission', 'admission'])->findOrFail($id);
-        return view('pages.admin.fee-management.edit-payment', compact('payment'));
+        $invoice = $payment->feeManagement;
+        $student = $payment->admission ?: ($invoice ? $invoice->admission : null);
+
+        $studentId = $student ? $student->id : null;
+        $pendingInvoices = collect();
+        if ($studentId) {
+            $pendingInvoices = FeeManagement::where('admission_id', $studentId)
+                ->where(function($q) use ($invoice) {
+                    $q->whereIn('status', ['unpaid', 'partial']);
+                    if ($invoice) {
+                        $q->orWhere('id', $invoice->id);
+                    }
+                })
+                ->orderBy('due_date', 'asc')
+                ->get();
+        }
+
+        $allInvoices = FeeManagement::with(['admission', 'academicSession'])
+            ->orderBy('invoice_no', 'desc')
+            ->get();
+
+        return view('pages.admin.fee-management.edit-payment', compact('payment', 'invoice', 'student', 'pendingInvoices', 'allInvoices'));
     }
 
     public function updatePayment(Request $request, $id): RedirectResponse
@@ -469,12 +490,15 @@ class FeeManagementController extends Controller
         $payment = \App\Models\FeePayment::findOrFail($id);
 
         $validated = $request->validate([
-            'amount'         => ['required', 'numeric', 'min:0.01'],
-            'payment_method' => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
-            'payment_date'   => ['required', 'date'],
-            'note'           => ['nullable', 'string', 'max:500'],
+            'amount'            => ['required', 'numeric', 'min:0.01'],
+            'payment_method'    => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
+            'payment_date'      => ['required', 'date'],
+            'note'              => ['nullable', 'string', 'max:500'],
+            'fee_management_id' => ['nullable', 'exists:fee_managements,id'],
+            'invoice_payments'  => ['nullable', 'array'],
         ]);
 
+        // Update target payment
         $payment->update([
             'amount'         => $validated['amount'],
             'payment_method' => $validated['payment_method'],
@@ -482,11 +506,57 @@ class FeeManagementController extends Controller
             'note'           => $validated['note'] ?? null,
         ]);
 
-        // Recalculate parent fee_management invoice totals & status
+        // If target invoice changed
+        if (!empty($validated['fee_management_id']) && $validated['fee_management_id'] != $payment->fee_management_id) {
+            $oldInvoiceId = $payment->fee_management_id;
+            $newInvoice = FeeManagement::find($validated['fee_management_id']);
+            if ($newInvoice) {
+                $payment->fee_management_id = $newInvoice->id;
+                $payment->admission_id = $newInvoice->admission_id;
+                $payment->save();
+
+                if ($oldInvoiceId) {
+                    $oldInvoice = FeeManagement::find($oldInvoiceId);
+                    if ($oldInvoice) {
+                        $oldInvoice->paid_amount = (float) \App\Models\FeePayment::where('fee_management_id', $oldInvoiceId)->sum('amount');
+                        $oldInvoice->save();
+                    }
+                }
+            }
+        }
+
+        // Handle additional multi-invoice payments if submitted
+        if (!empty($validated['invoice_payments'])) {
+            foreach ($validated['invoice_payments'] as $otherInvId => $otherAmt) {
+                if ($otherInvId == $payment->fee_management_id) continue;
+                $otherAmt = (float) $otherAmt;
+                if ($otherAmt <= 0) continue;
+
+                $otherInvoice = FeeManagement::find($otherInvId);
+                if (!$otherInvoice) continue;
+
+                $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+                $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+                \App\Models\FeePayment::create([
+                    'fee_management_id' => $otherInvoice->id,
+                    'admission_id'      => $otherInvoice->admission_id,
+                    'receipt_no'        => $receiptNo,
+                    'amount'            => $otherAmt,
+                    'payment_method'    => $validated['payment_method'],
+                    'payment_date'      => $validated['payment_date'],
+                    'note'              => $validated['note'] ?? null,
+                ]);
+
+                $otherInvoice->paid_amount = (float) \App\Models\FeePayment::where('fee_management_id', $otherInvoice->id)->sum('amount');
+                $otherInvoice->save();
+            }
+        }
+
+        // Recalculate parent invoice
         $invoice = FeeManagement::find($payment->fee_management_id);
         if ($invoice) {
-            $totalPaid = (float) \App\Models\FeePayment::where('fee_management_id', $invoice->id)->sum('amount');
-            $invoice->paid_amount = $totalPaid;
+            $invoice->paid_amount = (float) \App\Models\FeePayment::where('fee_management_id', $invoice->id)->sum('amount');
             $invoice->save();
         }
 
@@ -522,7 +592,25 @@ class FeeManagementController extends Controller
         $students = Admission::with('academicSession')->orderBy('first_name')->get();
         $academicSessions = AcademicSession::orderBy('start_date', 'desc')->get();
 
-        return view('pages.admin.fee-management.edit', compact('invoice', 'students', 'academicSessions'));
+        $classes = \App\Models\StudentClass::where('status', 'active')->orderBy('name')->get();
+        if ($classes->isEmpty()) {
+            $classes = Admission::query()
+                ->select('class_name')
+                ->whereNotNull('class_name')
+                ->where('class_name', '!=', '')
+                ->distinct()
+                ->orderBy('class_name')
+                ->get()
+                ->map(fn($item) => (object) ['name' => $item->class_name, 'id' => $item->class_name]);
+        }
+
+        $unpaidInvoices = FeeManagement::whereIn('status', ['unpaid', 'partial'])
+            ->where('id', '!=', $invoice->id)
+            ->orderBy('due_date', 'asc')
+            ->get()
+            ->groupBy('admission_id');
+
+        return view('pages.admin.fee-management.edit', compact('invoice', 'students', 'academicSessions', 'classes', 'unpaidInvoices'));
     }
 
     public function update(Request $request, $id): RedirectResponse
@@ -605,15 +693,16 @@ class FeeManagementController extends Controller
 
     public function statement(Request $request): View
     {
-        $startDate   = trim((string) $request->string('start_date'));
-        $endDate     = trim((string) $request->string('end_date'));
-        $admissionId = (int) $request->integer('admission_id', 0);
-        $className   = trim((string) $request->string('class_name', 'all'));
-        $feeType     = trim((string) $request->string('fee_type', 'all'));
-        $status      = trim((string) $request->string('status', 'all'));
-        $method      = trim((string) $request->string('payment_method', 'all'));
+        $startDate         = trim((string) $request->string('start_date'));
+        $endDate           = trim((string) $request->string('end_date'));
+        $admissionId       = (int) $request->integer('admission_id', 0);
+        $academicSessionId = (int) $request->integer('academic_session_id', 0);
+        $className         = trim((string) $request->string('class_name', 'all'));
+        $feeType           = trim((string) $request->string('fee_type', 'all'));
+        $status            = trim((string) $request->string('status', 'all'));
+        $method            = trim((string) $request->string('payment_method', 'all'));
 
-        $query = FeeManagement::query()->with('admission')->latest('created_at')->latest('id');
+        $query = FeeManagement::query()->with(['admission', 'academicSession'])->latest('created_at')->latest('id');
 
         if ($startDate !== '') {
             $query->where(function ($q) use ($startDate) {
@@ -633,6 +722,10 @@ class FeeManagementController extends Controller
 
         if ($admissionId > 0) {
             $query->where('admission_id', $admissionId);
+        }
+
+        if ($academicSessionId > 0) {
+            $query->where('academic_session_id', $academicSessionId);
         }
 
         if ($className !== 'all') {
@@ -668,9 +761,10 @@ class FeeManagementController extends Controller
         $pendingInvoicesCount   = $unpaidInvoicesCount + $partialInvoicesCount;
         $cancelledInvoicesCount = $invoices->where('status', 'cancelled')->count();
 
-        $selectedStudent = $admissionId > 0 ? Admission::find($admissionId) : null;
-        $studentsList    = Admission::orderBy('first_name')->get();
-        $classesList     = Admission::query()
+        $selectedStudent  = $admissionId > 0 ? Admission::find($admissionId) : null;
+        $studentsList     = Admission::orderBy('first_name')->get();
+        $academicSessions = \App\Models\AcademicSession::orderBy('session_name', 'desc')->get();
+        $classesList      = Admission::query()
             ->select('class_name')
             ->whereNotNull('class_name')
             ->where('class_name', '!=', '')
@@ -683,6 +777,7 @@ class FeeManagementController extends Controller
             'startDate',
             'endDate',
             'admissionId',
+            'academicSessionId',
             'selectedStudent',
             'className',
             'feeType',
@@ -699,21 +794,23 @@ class FeeManagementController extends Controller
             'pendingInvoicesCount',
             'cancelledInvoicesCount',
             'studentsList',
+            'academicSessions',
             'classesList'
         ));
     }
 
     public function exportStatement(Request $request)
     {
-        $startDate   = trim((string) $request->string('start_date'));
-        $endDate     = trim((string) $request->string('end_date'));
-        $admissionId = (int) $request->integer('admission_id', 0);
-        $className   = trim((string) $request->string('class_name', 'all'));
-        $feeType     = trim((string) $request->string('fee_type', 'all'));
-        $status      = trim((string) $request->string('status', 'all'));
-        $method      = trim((string) $request->string('payment_method', 'all'));
+        $startDate         = trim((string) $request->string('start_date'));
+        $endDate           = trim((string) $request->string('end_date'));
+        $admissionId       = (int) $request->integer('admission_id', 0);
+        $academicSessionId = (int) $request->integer('academic_session_id', 0);
+        $className         = trim((string) $request->string('class_name', 'all'));
+        $feeType           = trim((string) $request->string('fee_type', 'all'));
+        $status            = trim((string) $request->string('status', 'all'));
+        $method            = trim((string) $request->string('payment_method', 'all'));
 
-        $query = FeeManagement::query()->with('admission')->latest('created_at')->latest('id');
+        $query = FeeManagement::query()->with(['admission', 'academicSession'])->latest('created_at')->latest('id');
 
         if ($startDate !== '') {
             $query->where(function ($q) use ($startDate) {
@@ -733,6 +830,10 @@ class FeeManagementController extends Controller
 
         if ($admissionId > 0) {
             $query->where('admission_id', $admissionId);
+        }
+
+        if ($academicSessionId > 0) {
+            $query->where('academic_session_id', $academicSessionId);
         }
 
         if ($className !== 'all') {
@@ -772,6 +873,7 @@ class FeeManagementController extends Controller
                 'Student Name',
                 'Class',
                 'Section',
+                'Academic Session',
                 'Fee Type',
                 'Fee Month',
                 'Due Date',
@@ -787,12 +889,14 @@ class FeeManagementController extends Controller
 
             foreach ($invoices as $inv) {
                 $student = $inv->admission;
+                $session = $inv->academicSession;
                 fputcsv($file, [
                     $inv->invoice_no,
                     $student ? $student->admission_no : 'N/A',
                     $student ? ($student->first_name . ' ' . $student->last_name) : 'N/A',
                     $student ? $student->class_name : 'N/A',
                     $student ? $student->section : 'N/A',
+                    $session ? $session->session_name : 'N/A',
                     str_replace('_', ' ', $inv->fee_type),
                     $inv->fee_month,
                     $inv->due_date ? $inv->due_date->format('Y-m-d') : 'N/A',
@@ -815,15 +919,16 @@ class FeeManagementController extends Controller
 
     public function printStatement(Request $request): View
     {
-        $startDate   = trim((string) $request->string('start_date'));
-        $endDate     = trim((string) $request->string('end_date'));
-        $admissionId = (int) $request->integer('admission_id', 0);
-        $className   = trim((string) $request->string('class_name', 'all'));
-        $feeType     = trim((string) $request->string('fee_type', 'all'));
-        $status      = trim((string) $request->string('status', 'all'));
-        $method      = trim((string) $request->string('payment_method', 'all'));
+        $startDate         = trim((string) $request->string('start_date'));
+        $endDate           = trim((string) $request->string('end_date'));
+        $admissionId       = (int) $request->integer('admission_id', 0);
+        $academicSessionId = (int) $request->integer('academic_session_id', 0);
+        $className         = trim((string) $request->string('class_name', 'all'));
+        $feeType           = trim((string) $request->string('fee_type', 'all'));
+        $status            = trim((string) $request->string('status', 'all'));
+        $method            = trim((string) $request->string('payment_method', 'all'));
 
-        $query = FeeManagement::query()->with('admission')->latest('created_at')->latest('id');
+        $query = FeeManagement::query()->with(['admission', 'academicSession'])->latest('created_at')->latest('id');
 
         if ($startDate !== '') {
             $query->where(function ($q) use ($startDate) {
@@ -843,6 +948,10 @@ class FeeManagementController extends Controller
 
         if ($admissionId > 0) {
             $query->where('admission_id', $admissionId);
+        }
+
+        if ($academicSessionId > 0) {
+            $query->where('academic_session_id', $academicSessionId);
         }
 
         if ($className !== 'all') {
@@ -871,13 +980,16 @@ class FeeManagementController extends Controller
         $totalPaidAmount  = $invoices->where('status', '!=', 'cancelled')->sum('paid_amount');
         $totalDueBalance  = $invoices->where('status', '!=', 'cancelled')->sum(fn ($i) => $i->due_balance);
 
-        $selectedStudent = $admissionId > 0 ? Admission::find($admissionId) : null;
+        $selectedStudent        = $admissionId > 0 ? Admission::find($admissionId) : null;
+        $selectedSession        = $academicSessionId > 0 ? \App\Models\AcademicSession::find($academicSessionId) : null;
 
         return view('pages.admin.fee-management.print-statement', compact(
             'invoices',
             'startDate',
             'endDate',
             'selectedStudent',
+            'selectedSession',
+            'academicSessionId',
             'className',
             'feeType',
             'status',

@@ -303,6 +303,9 @@
     <!-- STATEMENT TITLE BANNER -->
     <div class="statement-title-badge">
       Fee Transaction Statement & Student Ledger
+      @if(isset($selectedSession) && $selectedSession)
+        &bull; Session: {{ $selectedSession->session_name }}
+      @endif
     </div>
 
     <!-- STUDENT DETAILS IF SINGLE STUDENT -->
@@ -353,17 +356,18 @@
     <table class="statement-table">
       <thead>
         <tr>
-          <th style="width: 70px;">Date</th>
-          <th style="width: 90px;">Invoice #</th>
+          <th style="width: 65px;">Date</th>
+          <th style="width: 80px;">Invoice #</th>
           <th>Student Details</th>
+          <th>Session</th>
           <th>Fee Type</th>
           <th>Month</th>
-          <th class="text-end" style="width: 75px;">Gross</th>
-          <th class="text-end" style="width: 65px;">Disc.</th>
-          <th class="text-end" style="width: 75px;">Net</th>
-          <th class="text-end" style="width: 75px;">Paid</th>
-          <th class="text-end" style="width: 75px;">Balance</th>
-          <th class="text-center" style="width: 65px;">Status</th>
+          <th class="text-end" style="width: 70px;">Gross</th>
+          <th class="text-end" style="width: 60px;">Disc.</th>
+          <th class="text-end" style="width: 70px;">Net</th>
+          <th class="text-end" style="width: 70px;">Paid</th>
+          <th class="text-end" style="width: 70px;">Balance</th>
+          <th class="text-center" style="width: 60px;">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -375,6 +379,7 @@
               {{ $inv->admission ? ($inv->admission->first_name . ' ' . $inv->admission->last_name) : 'N/A' }}
               <br><small style="color: #64748b;">{{ $inv->admission ? ($inv->admission->admission_no . ' • ' . $inv->admission->class_name) : '' }}</small>
             </td>
+            <td>{{ $inv->academicSession->session_name ?? 'N/A' }}</td>
             <td>{{ str_replace('_', ' ', $inv->fee_type) }}</td>
             <td>{{ $inv->fee_month }}</td>
             <td class="text-end">Rs. {{ number_format($inv->amount, 2) }}</td>
@@ -396,7 +401,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="11" class="text-center" style="padding: 20px; color: #64748b;">
+            <td colspan="12" class="text-center" style="padding: 20px; color: #64748b;">
               No fee records found for the selected filter parameters.
             </td>
           </tr>
@@ -405,7 +410,7 @@
       @if($invoices->count() > 0)
         <tfoot>
           <tr style="font-weight: 800; background-color: #f1f5f9; border-top: 2px solid #0f766e;">
-            <td colspan="5" class="text-end">STATEMENT TOTALS:</td>
+            <td colspan="6" class="text-end">STATEMENT TOTALS:</td>
             <td class="text-end">Rs. {{ number_format($totalGrossAmount, 2) }}</td>
             <td class="text-end" style="color: #0284c7;">Rs. {{ number_format($totalDiscount, 2) }}</td>
             <td class="text-end">Rs. {{ number_format($totalNetAmount, 2) }}</td>
