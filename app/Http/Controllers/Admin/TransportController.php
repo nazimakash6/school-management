@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Models\AcademicSession;
 use App\Models\Staff;
 use App\Models\Student;
+use App\Models\StudentClass;
 use App\Models\Transport;
 use App\Models\TransportStudent;
 use Carbon\Carbon;
@@ -72,50 +73,76 @@ class TransportController extends Controller
             'total_revenue'    => $totalRevenue,
         ];
 
-        // Fetch Drivers from Staff Table
+        // Fetch Drivers from Staff Table (Staff whose designation contains 'Driver')
         $drivers = Staff::where('status', 'active')
-            ->where(function($q) {
-                $q->where('department', 'Transport')
-                  ->orWhere('designation', 'like', '%Driver%')
-                  ->orWhere('driving_license_number', '!=', null);
-            })
+            ->where('designation', 'like', '%Driver%')
             ->orderBy('first_name')
             ->get();
 
-        if ($drivers->isEmpty()) {
-            $drivers = Staff::where('status', 'active')->orderBy('first_name')->get();
+        $availableRoutes = Transport::where('status', 'Active')->get();
+
+        // Fetch Sessions & Classes for Assign Student Modal
+        $academicSessions = AcademicSession::where('status', 'Active')->orderBy('start_date', 'desc')->get();
+        if ($academicSessions->isEmpty()) {
+            $academicSessions = AcademicSession::orderBy('id', 'desc')->get();
+        }
+        $activeSession = AcademicSession::where('status', 'Active')->first() ?? $academicSessions->first();
+
+        $classNames = Student::where('status', 'active')
+            ->when($activeSession, fn($q) => $q->where('academic_session_id', $activeSession->id))
+            ->whereNotNull('class_name')
+            ->distinct()
+            ->pluck('class_name');
+
+        if ($classNames->isEmpty()) {
+            $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+        } else {
+            $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get();
         }
 
-        $availableRoutes = Transport::where('status', 'Active')->get();
-        $students = Student::orderBy('first_name')->get();
+        $firstClass = $classes->first();
 
-        return view('pages.admin.transport.index', compact('routes', 'roster', 'stats', 'drivers', 'availableRoutes', 'students', 'activeTab'));
+        $students = Student::where('status', 'active')
+            ->when($activeSession, fn($q) => $q->where('academic_session_id', $activeSession->id))
+            ->when($firstClass, fn($q) => $q->where('class_name', $firstClass->name))
+            ->orderBy('first_name')
+            ->get();
+
+        return view('pages.admin.transport.index', compact(
+            'routes', 'roster', 'stats', 'drivers', 'availableRoutes', 'students',
+            'academicSessions', 'activeSession', 'classes', 'activeTab'
+        ));
     }
 
     public function create()
     {
-        $drivers = Staff::where('status', 'active')->orderBy('first_name')->get();
+        $drivers = Staff::where('status', 'active')
+            ->where('designation', 'like', '%Driver%')
+            ->orderBy('first_name')
+            ->get();
         $vehicleTypes = ['Bus', 'Coaster', 'Van', 'Minibus', 'Auto Ricksha', 'Chandi Gari'];
-        return view('pages.admin.transport.create', compact('drivers', 'vehicleTypes'));
+        $vehicleOwnerships = ['School Owned', 'Driver Owned', 'Contract / Leased'];
+        return view('pages.admin.transport.create', compact('drivers', 'vehicleTypes', 'vehicleOwnerships'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'route_code'       => 'nullable|string|max:100|unique:transports,route_code',
-            'route_title'      => 'required|string|max:255',
-            'vehicle_number'   => 'required|string|max:100',
-            'vehicle_model'    => 'nullable|string|max:255',
-            'vehicle_type'     => 'required|string|max:50',
-            'vehicle_capacity' => 'required|integer|min:1',
-            'driver_id'        => 'nullable|exists:staff,id',
-            'driver_name'      => 'nullable|string|max:255',
-            'driver_contact'   => 'nullable|string|max:100',
-            'driver_license'   => 'nullable|string|max:100',
-            'fare_amount'      => 'required|numeric|min:0',
-            'pickup_stops'     => 'nullable|string',
-            'status'           => 'required|string|max:50',
-            'note'             => 'nullable|string',
+            'route_code'        => 'nullable|string|max:100|unique:transports,route_code',
+            'route_title'       => 'required|string|max:255',
+            'vehicle_number'    => 'required|string|max:100',
+            'vehicle_model'     => 'nullable|string|max:255',
+            'vehicle_type'      => 'required|string|max:50',
+            'vehicle_ownership' => 'required|string|max:50',
+            'vehicle_capacity'  => 'required|integer|min:1',
+            'driver_id'         => 'nullable|exists:staff,id',
+            'driver_name'       => 'nullable|string|max:255',
+            'driver_contact'    => 'nullable|string|max:100',
+            'driver_license'    => 'nullable|string|max:100',
+            'fare_amount'       => 'required|numeric|min:0',
+            'pickup_stops'      => 'nullable|string',
+            'status'            => 'required|string|max:50',
+            'note'              => 'nullable|string',
         ]);
 
         if (!empty($validated['driver_id'])) {
@@ -145,9 +172,18 @@ class TransportController extends Controller
     public function edit($id)
     {
         $route = Transport::findOrFail($id);
-        $drivers = Staff::where('status', 'active')->orderBy('first_name')->get();
+        $drivers = Staff::where('status', 'active')
+            ->where(function($q) use ($route) {
+                $q->where('designation', 'like', '%Driver%');
+                if ($route->driver_id) {
+                    $q->orWhere('id', $route->driver_id);
+                }
+            })
+            ->orderBy('first_name')
+            ->get();
         $vehicleTypes = ['Bus', 'Coaster', 'Van', 'Minibus', 'Auto Ricksha', 'Chandi Gari'];
-        return view('pages.admin.transport.edit', compact('route', 'drivers', 'vehicleTypes'));
+        $vehicleOwnerships = ['School Owned', 'Driver Owned', 'Contract / Leased'];
+        return view('pages.admin.transport.edit', compact('route', 'drivers', 'vehicleTypes', 'vehicleOwnerships'));
     }
 
     public function update(Request $request, $id)
@@ -155,20 +191,21 @@ class TransportController extends Controller
         $route = Transport::findOrFail($id);
 
         $validated = $request->validate([
-            'route_code'       => 'nullable|string|max:100|unique:transports,route_code,' . $id,
-            'route_title'      => 'required|string|max:255',
-            'vehicle_number'   => 'required|string|max:100',
-            'vehicle_model'    => 'nullable|string|max:255',
-            'vehicle_type'     => 'required|string|max:50',
-            'vehicle_capacity' => 'required|integer|min:1',
-            'driver_id'        => 'nullable|exists:staff,id',
-            'driver_name'      => 'nullable|string|max:255',
-            'driver_contact'   => 'nullable|string|max:100',
-            'driver_license'   => 'nullable|string|max:100',
-            'fare_amount'      => 'required|numeric|min:0',
-            'pickup_stops'     => 'nullable|string',
-            'status'           => 'required|string|max:50',
-            'note'             => 'nullable|string',
+            'route_code'        => 'nullable|string|max:100|unique:transports,route_code,' . $id,
+            'route_title'       => 'required|string|max:255',
+            'vehicle_number'    => 'required|string|max:100',
+            'vehicle_model'     => 'nullable|string|max:255',
+            'vehicle_type'      => 'required|string|max:50',
+            'vehicle_ownership' => 'required|string|max:50',
+            'vehicle_capacity'  => 'required|integer|min:1',
+            'driver_id'         => 'nullable|exists:staff,id',
+            'driver_name'       => 'nullable|string|max:255',
+            'driver_contact'    => 'nullable|string|max:100',
+            'driver_license'    => 'nullable|string|max:100',
+            'fare_amount'       => 'required|numeric|min:0',
+            'pickup_stops'      => 'nullable|string',
+            'status'            => 'required|string|max:50',
+            'note'              => 'nullable|string',
         ]);
 
         if (!empty($validated['driver_id'])) {
@@ -272,5 +309,48 @@ class TransportController extends Controller
         $driverStaff = Staff::create($validated);
 
         return redirect()->back()->with('success', "New Driver '{$driverStaff->full_name}' added to Staff directory successfully!");
+    }
+
+    // AJAX: Get classes for selected academic session
+    public function getClassesBySession($sessionId)
+    {
+        $query = Student::where('status', 'active');
+        if ($sessionId && $sessionId !== 'all') {
+            $query->where('academic_session_id', $sessionId);
+        }
+
+        $classNames = $query->whereNotNull('class_name')->distinct()->pluck('class_name');
+
+        if ($classNames->isEmpty()) {
+            $classes = StudentClass::where('status', 'active')->orderBy('name')->get(['id', 'name']);
+        } else {
+            $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get(['id', 'name']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'classes' => $classes
+        ]);
+    }
+
+    // AJAX: Get students for selected class name and optional session
+    public function getStudentsByClass(Request $request, $className)
+    {
+        $query = Student::where('status', 'active');
+
+        if ($className !== 'all') {
+            $query->where('class_name', $className);
+        }
+
+        if ($request->filled('session_id') && $request->session_id !== 'all') {
+            $query->where('academic_session_id', $request->session_id);
+        }
+
+        $students = $query->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'admission_number', 'roll_no']);
+
+        return response()->json([
+            'success'  => true,
+            'students' => $students
+        ]);
     }
 }

@@ -249,7 +249,8 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::resource('staff', StaffController::class);
 	Route::resource('student-promotion', StudentPromotionController::class);
 	Route::resource('subjects', SubjectController::class);
-	Route::resource('subject-types', SubjectTypeController::class);
+	Route::get('transport/get-classes-by-session/{sessionId}', [TransportController::class, 'getClassesBySession'])->name('transport.get-classes-by-session');
+	Route::get('transport/get-students/{className}', [TransportController::class, 'getStudentsByClass'])->name('transport.get-students');
 	Route::post('transport/assign-student', [TransportController::class, 'assignStudent'])->name('transport.assign-student');
 	Route::delete('transport/remove-student/{allocationId}', [TransportController::class, 'removeStudent'])->name('transport.remove-student');
 	Route::post('transport/add-driver-staff', [TransportController::class, 'addDriverStaff'])->name('transport.add-driver-staff');

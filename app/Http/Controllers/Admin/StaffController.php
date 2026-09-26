@@ -297,8 +297,7 @@ class StaffController extends Controller
                 'Emergency Contact Relation', 'Department', 'Designation', 'Qualification',
                 'Experience', 'Employment Type', 'Shift', 'Salary', 'Salary Type',
                 'Bank Name', 'Bank Account Title', 'Bank Account Number', 'IBAN',
-                'Driving License Number', 'Driving License Expiry', 'Vehicle Registration Number',
-                'Vehicle Type', 'Status', 'Note'
+                'Status', 'Note'
             ]);
 
             foreach ($staffMembers as $staff) {
@@ -335,10 +334,6 @@ class StaffController extends Controller
                     $staff->bank_account_title,
                     $staff->bank_account_number,
                     $staff->iban,
-                    $staff->driving_license_number,
-                    $staff->driving_license_expiry,
-                    $staff->vehicle_registration_number,
-                    $staff->vehicle_type,
                     $staff->status,
                     $staff->note,
                 ]);
@@ -367,8 +362,7 @@ class StaffController extends Controller
                 'Emergency Contact Relation', 'Department', 'Designation', 'Qualification',
                 'Experience', 'Employment Type', 'Shift', 'Salary', 'Salary Type',
                 'Bank Name', 'Bank Account Title', 'Bank Account Number', 'IBAN',
-                'Driving License Number', 'Driving License Expiry', 'Vehicle Registration Number',
-                'Vehicle Type', 'Status', 'Note'
+                'Status', 'Note'
             ]);
 
             fputcsv($file, [
@@ -379,8 +373,7 @@ class StaffController extends Controller
                 'Father', 'teaching', 'teacher', 'M.Sc Physics',
                 '4 Years', 'full_time', 'Morning', '65000', 'monthly',
                 'HBL', 'Ali Khan', '1234567890', 'PK36HABB1234567890',
-                '', '', '',
-                '', 'active', 'Sample staff record'
+                'active', 'Sample staff record'
             ]);
 
             fclose($file);
@@ -481,10 +474,6 @@ class StaffController extends Controller
                 'bank_account_title' => $rowData['bank_account_title'] ?? null,
                 'bank_account_number' => $rowData['bank_account_number'] ?? null,
                 'iban' => $rowData['iban'] ?? null,
-                'driving_license_number' => $rowData['driving_license_number'] ?? null,
-                'driving_license_expiry' => ! empty($rowData['driving_license_expiry']) ? date('Y-m-d', strtotime($rowData['driving_license_expiry'])) : null,
-                'vehicle_registration_number' => $rowData['vehicle_registration_number'] ?? null,
-                'vehicle_type' => $rowData['vehicle_type'] ?? null,
                 'status' => $status,
                 'note' => $rowData['note'] ?? null,
             ]);

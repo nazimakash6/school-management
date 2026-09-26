@@ -798,13 +798,9 @@
                             <div class="tile-value font-mono">{{ $staff->bank_account_number ?: 'N/A' }}</div>
                         </div>
 
-                        <div class="detail-tile span-2">
+                        <div class="detail-tile span-4">
                             <div class="tile-label">IBAN Code</div>
                             <div class="tile-value font-mono" style="font-size: 7.5pt;">{{ $staff->iban ?: 'N/A' }}</div>
-                        </div>
-                        <div class="detail-tile span-2">
-                            <div class="tile-label">License No / Vehicle Reg</div>
-                            <div class="tile-value font-mono">{{ $staff->driving_license_number ?: 'N/A' }} / {{ $staff->vehicle_registration_number ?: 'N/A' }}</div>
                         </div>
                     </div>
                 </div>

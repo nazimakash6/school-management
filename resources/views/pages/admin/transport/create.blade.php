@@ -4,6 +4,15 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/transport.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        border-color: #dee2e6;
+        min-height: 38px;
+        border-radius: 0.375rem;
+    }
+</style>
 @endpush
 
 @section('content')
@@ -72,12 +81,12 @@
                                 <input type="text" name="vehicle_number" class="form-control font-monospace" placeholder="e.g. LEA-4892" value="{{ old('vehicle_number') }}" required>
                             </div>
 
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label fw-semibold text-dark small">Vehicle Model / Make</label>
                                 <input type="text" name="vehicle_model" class="form-control" placeholder="e.g. Toyota Coaster 2023 AC" value="{{ old('vehicle_model') }}">
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fw-semibold text-dark small">Vehicle Type <span class="text-danger">*</span></label>
                                 <select name="vehicle_type" class="form-select" required>
                                     @foreach($vehicleTypes as $vt)
@@ -86,12 +95,21 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark small">Total Passenger Seating Capacity <span class="text-danger">*</span></label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-dark small">Vehicle Ownership <span class="text-danger">*</span></label>
+                                <select name="vehicle_ownership" class="form-select" required>
+                                    @foreach($vehicleOwnerships as $vo)
+                                        <option value="{{ $vo }}" {{ old('vehicle_ownership', 'School Owned') === $vo ? 'selected' : '' }}>{{ $vo }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-dark small">Total Passenger Capacity <span class="text-danger">*</span></label>
                                 <input type="number" name="vehicle_capacity" class="form-control" min="1" value="{{ old('vehicle_capacity', 30) }}" required>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-semibold text-dark small">Monthly Transport Fare (PKR) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="fare_amount" class="form-control" min="0" value="{{ old('fare_amount', '150.00') }}" required>
                             </div>
@@ -197,15 +215,38 @@
 </div>
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 function onDriverSelected(selectElem) {
-    const selectedOption = selectElem.options[selectElem.selectedIndex];
-    if (selectedOption.value) {
+    if (!selectElem) return;
+    const selectedOption = selectElem.options ? selectElem.options[selectElem.selectedIndex] : null;
+    if (selectedOption && selectedOption.value) {
         document.getElementById('driverNameInput').value = selectedOption.getAttribute('data-name') || '';
         document.getElementById('driverContactInput').value = selectedOption.getAttribute('data-contact') || '';
         document.getElementById('driverLicenseInput').value = selectedOption.getAttribute('data-license') || '';
+    } else {
+        document.getElementById('driverNameInput').value = '';
+        document.getElementById('driverContactInput').value = '';
+        document.getElementById('driverLicenseInput').value = '';
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+        const $driverSelect = $('#driverSelect');
+        $driverSelect.select2({
+            theme: 'bootstrap-5',
+            placeholder: '-- Choose Driver from Staff Directory --',
+            allowClear: true,
+            width: '100%'
+        });
+
+        $driverSelect.on('change', function() {
+            onDriverSelected(this);
+        });
+    }
+});
 </script>
 @endpush
 @endsection

@@ -53,7 +53,7 @@
                 </button>
                 <button class="admission-step" type="button" data-step-target="3">
                     <span class="admission-step-number">4</span>
-                    <span class="admission-step-text">Payroll & Vehicle</span>
+                    <span class="admission-step-text">Payroll</span>
                 </button>
                 <button class="admission-step" type="button" data-step-target="4">
                     <span class="admission-step-number">5</span>
@@ -388,17 +388,17 @@
                         </div>
                         <div class="card-footer bg-transparent border-0 d-flex justify-content-between pt-3">
                             <button type="button" class="btn btn-secondary btn-sm" data-step-prev>&larr; Previous</button>
-                            <button type="button" class="btn btn-primary btn-sm" data-step-next>Next: Payroll & Vehicle &rarr;</button>
+                            <button type="button" class="btn btn-primary btn-sm" data-step-next>Next: Payroll &rarr;</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Step 4: Payroll & Vehicle -->
+                <!-- Step 4: Payroll -->
                 <div class="col-12 admission-step-panel" data-step-panel="3" hidden>
                     <div class="card border-0 bg-light-subtle">
                         <div class="card-header bg-transparent border-0 pb-0">
-                            <h5 class="mb-1 fw-bold">Payroll & Vehicle Information</h5>
-                            <p class="mb-0 text-sm text-tertiary">Salary details, bank account information, driving license, and vehicle registration.</p>
+                            <h5 class="mb-1 fw-bold">Payroll Information</h5>
+                            <p class="mb-0 text-sm text-tertiary">Salary details and bank account information.</p>
                         </div>
                         <div class="card-body row g-3">
                             <div class="col-md-4">
@@ -456,42 +456,6 @@
                                 <input type="text" name="iban" class="form-control @error('iban') is-invalid @enderror"
                                     value="{{ old('iban') }}" placeholder="e.g. PK36HABB0012345678901234">
                                 @error('iban')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Driving License Number</label>
-                                <input type="text" name="driving_license_number" class="form-control @error('driving_license_number') is-invalid @enderror"
-                                    value="{{ old('driving_license_number') }}" placeholder="e.g. LHR-123456">
-                                @error('driving_license_number')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Driving License Expiry</label>
-                                <input type="date" name="driving_license_expiry" class="form-control @error('driving_license_expiry') is-invalid @enderror"
-                                    value="{{ old('driving_license_expiry') }}">
-                                @error('driving_license_expiry')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Vehicle Registration Number</label>
-                                <input type="text" name="vehicle_registration_number" class="form-control @error('vehicle_registration_number') is-invalid @enderror"
-                                    value="{{ old('vehicle_registration_number') }}" placeholder="e.g. LEA-12-3456">
-                                @error('vehicle_registration_number')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Vehicle Type</label>
-                                <input type="text" name="vehicle_type" class="form-control @error('vehicle_type') is-invalid @enderror"
-                                    value="{{ old('vehicle_type') }}" placeholder="e.g. Motorbike / Car / Van">
-                                @error('vehicle_type')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

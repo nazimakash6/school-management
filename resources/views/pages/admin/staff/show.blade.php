@@ -561,34 +561,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <h6 class="fw-bold text-secondary text-xs text-uppercase mb-3">Vehicle & License Details</h6>
-                                    <div class="row g-3">
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="detail-tile p-3 bg-light rounded border">
-                                                <div class="tile-label text-tertiary text-xs">Driving License No</div>
-                                                <div class="tile-value font-monospace fw-medium">{{ $staff->driving_license_number ?: '—' }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="detail-tile p-3 bg-light rounded border">
-                                                <div class="tile-label text-tertiary text-xs">License Expiry</div>
-                                                <div class="tile-value fw-medium">{{ $staff->driving_license_expiry ? date('d M, Y', strtotime($staff->driving_license_expiry)) : '—' }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="detail-tile p-3 bg-light rounded border">
-                                                <div class="tile-label text-tertiary text-xs">Vehicle Registration No</div>
-                                                <div class="tile-value font-monospace fw-medium">{{ $staff->vehicle_registration_number ?: '—' }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <div class="detail-tile p-3 bg-light rounded border">
-                                                <div class="tile-label text-tertiary text-xs">Vehicle Type</div>
-                                                <div class="tile-value fw-medium">{{ $staff->vehicle_type ?: '—' }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -835,9 +807,7 @@
             </tr>
             <tr>
                 <th>IBAN Code</th>
-                <td><span class="font-monospace text-xs">{{ $staff->iban ?: 'N/A' }}</span></td>
-                <th>License / Vehicle Reg</th>
-                <td>{{ $staff->driving_license_number ?: 'N/A' }} / {{ $staff->vehicle_registration_number ?: 'N/A' }}</td>
+                <td colspan="3"><span class="font-monospace text-xs">{{ $staff->iban ?: 'N/A' }}</span></td>
             </tr>
         </table>
 

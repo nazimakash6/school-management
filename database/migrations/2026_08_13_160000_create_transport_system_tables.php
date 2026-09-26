@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('vehicle_number')->after('route_title');
             $table->string('vehicle_model')->nullable()->after('vehicle_number');
             $table->string('vehicle_type')->default('Bus')->after('vehicle_model');
-            $table->integer('vehicle_capacity')->default(30)->after('vehicle_type');
+            $table->string('vehicle_ownership')->default('School Owned')->after('vehicle_type');
+            $table->integer('vehicle_capacity')->default(30)->after('vehicle_ownership');
             $table->foreignId('driver_id')->nullable()->after('vehicle_capacity')->constrained('staff')->onDelete('set null');
             $table->string('driver_name')->nullable()->after('driver_id');
             $table->string('driver_contact')->nullable()->after('driver_name');
@@ -61,6 +62,7 @@ return new class extends Migration
                 'vehicle_number',
                 'vehicle_model',
                 'vehicle_type',
+                'vehicle_ownership',
                 'vehicle_capacity',
                 'driver_id',
                 'driver_name',

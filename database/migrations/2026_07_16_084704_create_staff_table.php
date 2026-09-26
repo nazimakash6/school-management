@@ -45,10 +45,6 @@ return new class extends Migration
             $table->string('bank_account_title')->nullable();
             $table->string('bank_account_number')->nullable();
             $table->string('iban')->nullable();
-            $table->string('driving_license_number')->nullable();
-            $table->string('driving_license_expiry')->nullable();
-            $table->string('vehicle_registration_number')->nullable();
-            $table->string('vehicle_type')->nullable();
             $table->string('cv')->nullable();
             $table->string('profile_picture')->nullable();
             $table->string('status')->default('active');

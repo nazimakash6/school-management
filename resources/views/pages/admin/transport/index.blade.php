@@ -225,9 +225,12 @@
 
                                     {{-- Vehicle & Capacity --}}
                                     <td>
-                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                        <div class="d-flex align-items-center gap-1 mb-1 flex-wrap">
                                             <span class="badge {{ $route->vehicle_type_badge_class }}">
                                                 {{ $route->vehicle_type }}
+                                            </span>
+                                            <span class="badge bg-secondary bg-opacity-10 text-dark border" style="font-size:0.68rem;">
+                                                {{ $route->vehicle_ownership ?: 'School Owned' }}
                                             </span>
                                             <span class="fw-bold text-dark font-monospace small">{{ $route->vehicle_number }}</span>
                                         </div>
@@ -538,13 +541,38 @@
                         </select>
                     </div>
 
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark small">Academic Session <span class="text-danger">*</span></label>
+                            <select id="modal_academic_session_id" class="form-select" onchange="onModalSessionChange(this.value)" required>
+                                <option value="">-- Select Session --</option>
+                                @foreach($academicSessions as $sess)
+                                    <option value="{{ $sess->id }}" {{ (isset($activeSession) && $activeSession->id == $sess->id) ? 'selected' : '' }}>
+                                        {{ $sess->session_name ?: $sess->year }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark small">Class <span class="text-danger">*</span></label>
+                            <select id="modal_class_name" class="form-select" onchange="onModalClassChange(this.value)" required>
+                                <option value="">-- Select Class --</option>
+                                @foreach($classes as $cls)
+                                    <option value="{{ $cls->name }}" {{ (isset($classes[0]) && $classes[0]->name == $cls->name) ? 'selected' : '' }}>
+                                        {{ $cls->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark small">Select Student <span class="text-danger">*</span></label>
-                        <select name="student_id" class="form-select" required>
+                        <select name="student_id" id="modal_student_id" class="form-select" required>
                             <option value="">-- Select Student --</option>
                             @foreach($students as $st)
                                 <option value="{{ $st->id }}">
-                                    {{ $st->first_name }} {{ $st->last_name }} (Adm #: {{ $st->admission_number }})
+                                    {{ $st->first_name }} {{ $st->last_name }} (Adm #: {{ $st->admission_number ?: 'N/A' }})
                                 </option>
                             @endforeach
                         </select>
@@ -584,10 +612,84 @@
 <script>
     function openQuickAssignModal(routeId, routeTitle, fare) {
         const select = document.getElementById('assignRouteSelect');
-        select.value = routeId;
-        document.getElementById('assignMonthlyFareInput').value = fare;
-        const modal = new bootstrap.Modal(document.getElementById('assignStudentModal'));
-        modal.show();
+        if (select) {
+            select.value = routeId;
+        }
+        const fareInput = document.getElementById('assignMonthlyFareInput');
+        if (fareInput) {
+            fareInput.value = fare;
+        }
+        const modalEl = document.getElementById('assignStudentModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    }
+
+    function onModalSessionChange(sessionId) {
+        const classSelect = document.getElementById('modal_class_name');
+        const studentSelect = document.getElementById('modal_student_id');
+        classSelect.innerHTML = '<option value="">Loading classes...</option>';
+        studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+
+        if (!sessionId) {
+            classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+            return;
+        }
+
+        fetch("{{ url('transport/get-classes-by-session') }}/" + sessionId)
+            .then(res => res.json())
+            .then(data => {
+                classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+                if (data.classes && data.classes.length > 0) {
+                    data.classes.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.name;
+                        opt.textContent = c.name;
+                        classSelect.appendChild(opt);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching classes:', err);
+                classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+            });
+    }
+
+    function onModalClassChange(className) {
+        const sessionId = document.getElementById('modal_academic_session_id').value;
+        const studentSelect = document.getElementById('modal_student_id');
+        studentSelect.innerHTML = '<option value="">Loading students...</option>';
+
+        if (!className) {
+            studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+            return;
+        }
+
+        let url = "{{ url('transport/get-students') }}/" + encodeURIComponent(className);
+        if (sessionId) {
+            url += "?session_id=" + sessionId;
+        }
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+                if (data.students && data.students.length > 0) {
+                    data.students.forEach(st => {
+                        const opt = document.createElement('option');
+                        opt.value = st.id;
+                        opt.textContent = `${st.first_name} ${st.last_name || ''} (Adm #: ${st.admission_number || 'N/A'})`.trim();
+                        studentSelect.appendChild(opt);
+                    });
+                } else {
+                    studentSelect.innerHTML = '<option value="">No students found in this class</option>';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching students:', err);
+                studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+            });
     }
 
     function updateDefaultFare(selectElem) {

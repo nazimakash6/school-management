@@ -66,8 +66,9 @@
                 </div>
                 <div class="card-body p-4">
                     <h5 class="fw-bold text-dark mb-1">{{ $route->route_title }}</h5>
-                    <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                         <span class="badge {{ $route->vehicle_type_badge_class }}">{{ $route->vehicle_type }}</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-dark border">{{ $route->vehicle_ownership ?: 'School Owned' }}</span>
                         <span class="fw-bold font-monospace text-dark small">Reg: {{ $route->vehicle_number }}</span>
                     </div>
 
