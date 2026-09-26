@@ -54,3 +54,10 @@
     border-radius: 0.375rem;
     border: 1px solid transparent;
 }
+
+@media (max-width: 576px) {
+    .category-pill-btn {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

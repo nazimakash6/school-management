@@ -59,7 +59,7 @@ class Inventory extends Model
         });
     }
 
-    public function getImageProofUrlAttribute(): string
+    public function getImageProofUrlAttribute(): ?string
     {
         if ($this->image_proof) {
             if (str_starts_with($this->image_proof, 'http://') || str_starts_with($this->image_proof, 'https://')) {
@@ -68,20 +68,43 @@ class Inventory extends Model
             return asset('storage/' . $this->image_proof);
         }
         
-        // Fallback SVG data placeholder image for proof preview
-        return "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=60";
+        return null;
+    }
+
+    public function getCategoriesListAttribute(): array
+    {
+        $val = $this->attributes['category'] ?? null;
+        if (empty($val)) {
+            return [];
+        }
+        $decoded = json_decode($val, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        if (str_contains($val, ',')) {
+            return array_map('trim', explode(',', $val));
+        }
+        return [$val];
+    }
+
+    public static function getCategoryBadgeClassForName(string $catName): string
+    {
+        return match ($catName) {
+            'Electronics & IT'       => 'bg-primary-subtle text-primary border-primary-subtle',
+            'Furniture'              => 'bg-purple-subtle text-purple border-purple-subtle',
+            'Lab Equipment'          => 'bg-info-subtle text-info border-info-subtle',
+            'Stationery'             => 'bg-warning-subtle text-warning border-warning-subtle',
+            'Sports Goods'           => 'bg-success-subtle text-success border-success-subtle',
+            'Maintenance & Cleaning' => 'bg-danger-subtle text-danger border-danger-subtle',
+            'Library Supplies'       => 'bg-teal-subtle text-teal border-teal-subtle',
+            default                  => 'bg-secondary-subtle text-secondary border-secondary-subtle',
+        };
     }
 
     public function getCategoryBadgeClassAttribute(): string
     {
-        return match ($this->category) {
-            'Electronics & IT' => 'bg-primary-subtle text-primary border-primary-subtle',
-            'Furniture'        => 'bg-purple-subtle text-purple border-purple-subtle',
-            'Lab Equipment'    => 'bg-info-subtle text-info border-info-subtle',
-            'Stationery'       => 'bg-warning-subtle text-warning border-warning-subtle',
-            'Sports Goods'     => 'bg-success-subtle text-success border-success-subtle',
-            default            => 'bg-secondary-subtle text-secondary border-secondary-subtle',
-        };
+        $first = $this->categories_list[0] ?? 'General';
+        return static::getCategoryBadgeClassForName($first);
     }
 
     public function getStatusBadgeClassAttribute(): string

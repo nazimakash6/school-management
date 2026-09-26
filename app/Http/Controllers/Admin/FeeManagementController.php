@@ -762,15 +762,30 @@ class FeeManagementController extends Controller
         $cancelledInvoicesCount = $invoices->where('status', 'cancelled')->count();
 
         $selectedStudent  = $admissionId > 0 ? Admission::find($admissionId) : null;
-        $studentsList     = Admission::orderBy('first_name')->get();
         $academicSessions = \App\Models\AcademicSession::orderBy('session_name', 'desc')->get();
-        $classesList      = Admission::query()
+
+        // Classes list (optionally filtered by academic_session_id if selected)
+        $classesQuery = Admission::query()
             ->select('class_name')
             ->whereNotNull('class_name')
-            ->where('class_name', '!=', '')
-            ->distinct()
-            ->orderBy('class_name')
-            ->pluck('class_name');
+            ->where('class_name', '!=', '');
+        if ($academicSessionId > 0) {
+            $classesQuery->where('academic_session_id', $academicSessionId);
+        }
+        $classesList = $classesQuery->distinct()->orderBy('class_name')->pluck('class_name');
+
+        // Students list (filtered by academic_session_id and class_name if selected)
+        $studentsQuery = Admission::query()->orderBy('first_name');
+        if ($academicSessionId > 0) {
+            $studentsQuery->where('academic_session_id', $academicSessionId);
+        }
+        if ($className !== 'all') {
+            $studentsQuery->where('class_name', $className);
+        }
+        $studentsList = $studentsQuery->get();
+
+        // Full raw students data for real-time JavaScript dependent dropdown filtering
+        $allStudentsRaw = Admission::orderBy('first_name')->get(['id', 'admission_no', 'first_name', 'last_name', 'class_name', 'academic_session_id']);
 
         return view('pages.admin.fee-management.statement', compact(
             'invoices',
@@ -795,7 +810,8 @@ class FeeManagementController extends Controller
             'cancelledInvoicesCount',
             'studentsList',
             'academicSessions',
-            'classesList'
+            'classesList',
+            'allStudentsRaw'
         ));
     }
 

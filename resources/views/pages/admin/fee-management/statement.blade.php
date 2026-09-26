@@ -116,7 +116,7 @@
           </div>
           <div>
             <h3 class="mb-0 fw-bold text-dark tracking-tight">Fee Account Ledger & Statement</h3>
-            <p class="text-muted mb-0 fs-7">Generate detailed collection reports, filter by academic session, and export student ledgers</p>
+            <p class="text-muted mb-0 fs-7">Generate detailed collection reports, filter by academic session, class and student ledgers</p>
           </div>
         </div>
       </div>
@@ -133,7 +133,7 @@
       </div>
     </div>
 
-    {{-- OPTIMIZED FILTER FORM CARD --}}
+    {{-- OPTIMIZED FILTER FORM CARD WITH DEPENDENT DROPDOWNS --}}
     <div class="card border-0 rounded-3 mb-4 filter-card">
       <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
         <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
@@ -141,20 +141,20 @@
           Filter Statement Records
         </h6>
         <span class="badge bg-teal-subtle text-teal-700 fw-semibold px-2.5 py-1 fs-8">
-          <i data-lucide="filter" style="width:0.75rem;height:0.75rem;" class="me-1"></i> Smart Multi-Filter
+          <i data-lucide="filter" style="width:0.75rem;height:0.75rem;" class="me-1"></i> Dependent Filter (Session &rarr; Class &rarr; Student)
         </span>
       </div>
       <div class="card-body p-4">
-        <form method="GET" action="{{ route('fee-management.statement') }}">
-          <!-- Filter Grid: Balanced 4 columns per row on Desktop -->
+        <form method="GET" action="{{ route('fee-management.statement') }}" id="statementFilterForm">
+          <!-- Filter Grid: Session -> Class -> Student Order -->
           <div class="row g-3">
             <!-- 1. Academic Session Filter -->
             <div class="col-lg-3 col-md-6 col-12">
               <label class="filter-label d-flex align-items-center gap-1">
                 <i data-lucide="calendar-range" style="width:0.875rem;height:0.875rem;" class="text-teal-600"></i>
-                Academic Session
+                1. Academic Session
               </label>
-              <select name="academic_session_id" class="form-select">
+              <select name="academic_session_id" id="filter_academic_session" class="form-select" onchange="onSessionChange()">
                 <option value="0">All Sessions</option>
                 @foreach($academicSessions as $session)
                   <option value="{{ $session->id }}" {{ $academicSessionId == $session->id ? 'selected' : '' }}>
@@ -164,32 +164,32 @@
               </select>
             </div>
 
-            <!-- 2. Student Picker -->
+            <!-- 2. Class Picker -->
+            <div class="col-lg-3 col-md-6 col-12">
+              <label class="filter-label d-flex align-items-center gap-1">
+                <i data-lucide="graduation-cap" style="width:0.875rem;height:0.875rem;" class="text-teal-600"></i>
+                2. Class
+              </label>
+              <select name="class_name" id="filter_class" class="form-select" onchange="onClassChange()">
+                <option value="all">All Classes</option>
+                @foreach($classesList as $c)
+                  <option value="{{ $c }}" {{ $className == $c ? 'selected' : '' }}>{{ $c }}</option>
+                @endforeach
+              </select>
+            </div>
+
+            <!-- 3. Student Picker -->
             <div class="col-lg-3 col-md-6 col-12">
               <label class="filter-label d-flex align-items-center gap-1">
                 <i data-lucide="user" style="width:0.875rem;height:0.875rem;" class="text-teal-600"></i>
-                Select Student
+                3. Student
               </label>
-              <select name="admission_id" class="form-select select2-student">
+              <select name="admission_id" id="filter_student" class="form-select select2-student">
                 <option value="0">All Students (Global Ledger)</option>
                 @foreach($studentsList as $st)
                   <option value="{{ $st->id }}" {{ $admissionId == $st->id ? 'selected' : '' }}>
                     {{ $st->admission_no }} - {{ $st->first_name }} {{ $st->last_name }} ({{ $st->class_name }})
                   </option>
-                @endforeach
-              </select>
-            </div>
-
-            <!-- 3. Class Picker -->
-            <div class="col-lg-3 col-md-6 col-12">
-              <label class="filter-label d-flex align-items-center gap-1">
-                <i data-lucide="graduation-cap" style="width:0.875rem;height:0.875rem;" class="text-teal-600"></i>
-                Class
-              </label>
-              <select name="class_name" class="form-select">
-                <option value="all">All Classes</option>
-                @foreach($classesList as $c)
-                  <option value="{{ $c }}" {{ $className == $c ? 'selected' : '' }}>{{ $c }}</option>
                 @endforeach
               </select>
             </div>
@@ -314,7 +314,7 @@
       </div>
     @endif
 
-    {{-- RESPONSIVE AUTO-WRAPPING SUMMARY STATISTIC CARDS (5 EQUAL COLUMNS ON XL, AUTO WRAP ON LOWER RESOLUTIONS) --}}
+    {{-- RESPONSIVE AUTO-WRAPPING SUMMARY STATISTIC CARDS --}}
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
       <!-- 1. Gross Invoiced -->
       <div class="col">
@@ -623,3 +623,66 @@
     </div>
   </div>
 @endsection
+
+@push('scripts')
+<script>
+var allStudentsData = @json($allStudentsRaw);
+
+function onSessionChange() {
+  var sessionId = document.getElementById('filter_academic_session').value;
+  var classSelect = document.getElementById('filter_class');
+  var studentSelect = document.getElementById('filter_student');
+
+  var currentSelectedClass = classSelect.value;
+  var currentSelectedStudent = studentSelect.value;
+
+  // Filter available classes for selected session
+  var availableClasses = [];
+  allStudentsData.forEach(function(st) {
+    if (!st.class_name) return;
+    if (sessionId === '0' || String(st.academic_session_id) === String(sessionId)) {
+      if (!availableClasses.includes(st.class_name)) {
+        availableClasses.push(st.class_name);
+      }
+    }
+  });
+  availableClasses.sort();
+
+  // Rebuild Class Dropdown options
+  var classHtml = '<option value="all">All Classes</option>';
+  availableClasses.forEach(function(c) {
+    var isSel = (c === currentSelectedClass) ? 'selected' : '';
+    classHtml += `<option value="${c}" ${isSel}>${c}</option>`;
+  });
+  classSelect.innerHTML = classHtml;
+
+  // Rebuild Student Dropdown options
+  rebuildStudentOptions(sessionId, classSelect.value, currentSelectedStudent);
+}
+
+function onClassChange() {
+  var sessionId = document.getElementById('filter_academic_session').value;
+  var className = document.getElementById('filter_class').value;
+  var studentSelect = document.getElementById('filter_student');
+  
+  rebuildStudentOptions(sessionId, className, studentSelect.value);
+}
+
+function rebuildStudentOptions(sessionId, className, selectedStudentId) {
+  var studentSelect = document.getElementById('filter_student');
+  var studentHtml = '<option value="0">All Students (Global Ledger)</option>';
+
+  allStudentsData.forEach(function(st) {
+    var matchSession = (sessionId === '0' || String(st.academic_session_id) === String(sessionId));
+    var matchClass = (className === 'all' || String(st.class_name) === String(className));
+
+    if (matchSession && matchClass) {
+      var isSel = (String(st.id) === String(selectedStudentId)) ? 'selected' : '';
+      studentHtml += `<option value="${st.id}" ${isSel}>${st.admission_no} - ${st.first_name} ${st.last_name} (${st.class_name || 'N/A'})</option>`;
+    }
+  });
+
+  studentSelect.innerHTML = studentHtml;
+}
+</script>
+@endpush

@@ -187,12 +187,18 @@
                         <tr>
                             {{-- Image Proof Thumbnail --}}
                             <td class="ps-3">
-                                <div class="proof-thumb-wrapper" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
-                                    <img src="{{ $item->image_proof_url }}" alt="Proof" class="proof-thumb-img" loading="lazy">
-                                    <div class="proof-thumb-overlay" title="Click to view image proof">
-                                        <i data-lucide="zoom-in" style="width:1rem;height:1rem;"></i>
+                                @if($item->image_proof && $item->image_proof_url)
+                                    <div class="proof-thumb-wrapper" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
+                                        <img src="{{ $item->image_proof_url }}" alt="Proof" class="proof-thumb-img" loading="lazy">
+                                        <div class="proof-thumb-overlay" title="Click to view image proof">
+                                            <i data-lucide="zoom-in" style="width:1rem;height:1rem;"></i>
+                                        </div>
                                     </div>
-                                </div>
+                                @else
+                                    <div class="proof-thumb-none d-flex align-items-center justify-content-center text-muted bg-light rounded-2 border" style="width:42px; height:42px;" title="No Image Proof Attached">
+                                        <i data-lucide="image-off" style="width:1.1rem;height:1.1rem;" class="text-secondary opacity-50"></i>
+                                    </div>
+                                @endif
                             </td>
 
                             {{-- Item Code & Name --}}
@@ -212,9 +218,11 @@
 
                             {{-- Category --}}
                             <td>
-                                <span class="badge badge-category {{ $item->category_badge_class }}">
-                                    {{ $item->category }}
-                                </span>
+                                @foreach($item->categories_list as $cat)
+                                    <span class="badge badge-category {{ \App\Models\Inventory::getCategoryBadgeClassForName($cat) }} me-1 mb-1">
+                                        {{ $cat }}
+                                    </span>
+                                @endforeach
                             </td>
 
                             {{-- Stock Qty --}}

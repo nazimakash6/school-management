@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicSession;
 use App\Models\QuranModule;
 use App\Models\Student;
 use App\Models\StudentClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class QuranModuleController extends Controller
 {
@@ -60,16 +62,41 @@ class QuranModuleController extends Controller
 
     public function create()
     {
-        $classes = StudentClass::orderBy('name')->get();
-        return view('pages.admin.quran-module.create', compact('classes'));
+        $academicSessions = AcademicSession::orderBy('id', 'desc')->get();
+        $activeSession = AcademicSession::where('status', 'Active')->first() ?? $academicSessions->first();
+
+        if ($activeSession) {
+            $classNames = Student::where('academic_session_id', $activeSession->id)
+                ->where('status', 'active')
+                ->whereNotNull('class_name')
+                ->distinct()
+                ->pluck('class_name');
+
+            if ($classNames->isNotEmpty()) {
+                $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get();
+            } else {
+                $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+            }
+        } else {
+            $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+        }
+
+        return view('pages.admin.quran-module.create', compact('academicSessions', 'activeSession', 'classes'));
     }
 
     public function store(Request $request)
     {
+        $categories = $request->input('categories');
+        if (!$categories && $request->filled('category')) {
+            $categories = [$request->input('category')];
+        }
+        $request->merge(['categories' => $categories]);
+
         $validated = $request->validate([
             'student_id'             => 'required|exists:students,id',
             'entry_date'             => 'required|date',
-            'category'               => 'required|string|in:Qaida,Nazra,Hifz,Tajweed,Hadith,Dua',
+            'categories'             => 'required|array|min:1',
+            'categories.*'           => 'required|string|in:Qaida,Nazra,Hifz,Tajweed,Hadith,Dua',
             'status'                 => 'required|string',
             'teacher_name'           => 'nullable|string|max:255',
             'para_no'                => 'nullable|integer|min:1|max:30',
@@ -77,6 +104,10 @@ class QuranModuleController extends Controller
             'ayah_from'              => 'nullable|integer|min:1',
             'ayah_to'                => 'nullable|integer|min:1',
             'lesson_name'            => 'nullable|string|max:255',
+            'qaida_lesson_name'      => 'nullable|string|max:255',
+            'tajweed_lesson_name'    => 'nullable|string|max:255',
+            'hadith_lesson_name'     => 'nullable|string|max:255',
+            'dua_lesson_name'        => 'nullable|string|max:255',
             'sabaq'                  => 'nullable|string',
             'sabqi'                  => 'nullable|string',
             'manzil'                 => 'nullable|string',
@@ -89,13 +120,54 @@ class QuranModuleController extends Controller
         $student = Student::findOrFail($validated['student_id']);
         $classObj = StudentClass::where('name', $student->class_name)->first();
 
-        $validated['student_class_id'] = $classObj?->id;
-        $validated['created_by']       = Auth::id();
+        $createdCount = 0;
 
-        QuranModule::create($validated);
+        DB::transaction(function () use ($validated, $student, $classObj, &$createdCount) {
+            foreach ($validated['categories'] as $cat) {
+                $recordData = [
+                    'student_id'       => $validated['student_id'],
+                    'student_class_id' => $classObj?->id,
+                    'entry_date'       => $validated['entry_date'],
+                    'category'         => $cat,
+                    'status'           => $validated['status'],
+                    'teacher_name'     => $validated['teacher_name'] ?? null,
+                    'score'            => $validated['score'] ?? 100.0,
+                    'mistakes_count'   => $validated['mistakes_count'] ?? 0,
+                    'remarks'          => $validated['remarks'] ?? null,
+                    'created_by'       => Auth::id(),
+                ];
+
+                if ($cat === 'Hifz') {
+                    $recordData['sabaq']                  = $validated['sabaq'] ?? null;
+                    $recordData['sabqi']                  = $validated['sabqi'] ?? null;
+                    $recordData['manzil']                 = $validated['manzil'] ?? null;
+                    $recordData['total_parahs_memorized'] = $validated['total_parahs_memorized'] ?? 0;
+                } elseif ($cat === 'Nazra') {
+                    $recordData['para_no']    = $validated['para_no'] ?? null;
+                    $recordData['surah_name'] = $validated['surah_name'] ?? null;
+                    $recordData['ayah_from']  = $validated['ayah_from'] ?? null;
+                    $recordData['ayah_to']    = $validated['ayah_to'] ?? null;
+                } elseif ($cat === 'Qaida') {
+                    $recordData['lesson_name'] = $validated['qaida_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+                } elseif ($cat === 'Tajweed') {
+                    $recordData['lesson_name'] = $validated['tajweed_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+                } elseif ($cat === 'Hadith') {
+                    $recordData['lesson_name'] = $validated['hadith_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+                } elseif ($cat === 'Dua') {
+                    $recordData['lesson_name'] = $validated['dua_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+                }
+
+                QuranModule::create($recordData);
+                $createdCount++;
+            }
+        });
+
+        $message = $createdCount > 1
+            ? "{$createdCount} Quran progress records created successfully!"
+            : "Quran progress record created successfully!";
 
         return redirect()->route('quran-module.index')
-            ->with('success', 'Quran progress record created successfully!');
+            ->with('success', $message);
     }
 
     public function show($id)
@@ -122,20 +194,50 @@ class QuranModuleController extends Controller
     public function edit($id)
     {
         $record = QuranModule::with(['student'])->findOrFail($id);
-        $classes = StudentClass::orderBy('name')->get();
-        $studentsInClass = Student::where('class_name', $record->student->class_name ?? '')->orderBy('first_name')->get();
+        $academicSessions = AcademicSession::orderBy('id', 'desc')->get();
+        $selectedSessionId = $record->student->academic_session_id ?? null;
 
-        return view('pages.admin.quran-module.edit', compact('record', 'classes', 'studentsInClass'));
+        if ($selectedSessionId) {
+            $classNames = Student::where('academic_session_id', $selectedSessionId)
+                ->where('status', 'active')
+                ->whereNotNull('class_name')
+                ->distinct()
+                ->pluck('class_name');
+
+            if ($classNames->isNotEmpty()) {
+                $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get();
+            } else {
+                $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+            }
+        } else {
+            $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+        }
+
+        $studentsInClass = Student::where('class_name', $record->student->class_name ?? '')
+            ->when($selectedSessionId, function ($q) use ($selectedSessionId) {
+                return $q->where('academic_session_id', $selectedSessionId);
+            })
+            ->orderBy('first_name')
+            ->get();
+
+        return view('pages.admin.quran-module.edit', compact('record', 'academicSessions', 'selectedSessionId', 'classes', 'studentsInClass'));
     }
 
     public function update(Request $request, $id)
     {
         $record = QuranModule::findOrFail($id);
 
+        $categories = $request->input('categories');
+        if (!$categories && $request->filled('category')) {
+            $categories = [$request->input('category')];
+        }
+        $request->merge(['categories' => $categories]);
+
         $validated = $request->validate([
             'student_id'             => 'required|exists:students,id',
             'entry_date'             => 'required|date',
-            'category'               => 'required|string|in:Qaida,Nazra,Hifz,Tajweed,Hadith,Dua',
+            'categories'             => 'required|array|min:1',
+            'categories.*'           => 'required|string|in:Qaida,Nazra,Hifz,Tajweed,Hadith,Dua',
             'status'                 => 'required|string',
             'teacher_name'           => 'nullable|string|max:255',
             'para_no'                => 'nullable|integer|min:1|max:30',
@@ -143,6 +245,10 @@ class QuranModuleController extends Controller
             'ayah_from'              => 'nullable|integer|min:1',
             'ayah_to'                => 'nullable|integer|min:1',
             'lesson_name'            => 'nullable|string|max:255',
+            'qaida_lesson_name'      => 'nullable|string|max:255',
+            'tajweed_lesson_name'    => 'nullable|string|max:255',
+            'hadith_lesson_name'     => 'nullable|string|max:255',
+            'dua_lesson_name'        => 'nullable|string|max:255',
             'sabaq'                  => 'nullable|string',
             'sabqi'                  => 'nullable|string',
             'manzil'                 => 'nullable|string',
@@ -155,12 +261,70 @@ class QuranModuleController extends Controller
         $student = Student::findOrFail($validated['student_id']);
         $classObj = StudentClass::where('name', $student->class_name)->first();
 
-        $validated['student_class_id'] = $classObj?->id;
+        $selectedCategories = $validated['categories'];
+        $primaryCategory = $selectedCategories[0];
 
-        $record->update($validated);
+        DB::transaction(function () use ($record, $validated, $student, $classObj, $selectedCategories, $primaryCategory) {
+            $baseData = [
+                'student_id'       => $validated['student_id'],
+                'student_class_id' => $classObj?->id,
+                'entry_date'       => $validated['entry_date'],
+                'status'           => $validated['status'],
+                'teacher_name'     => $validated['teacher_name'] ?? null,
+                'score'            => $validated['score'] ?? 100.0,
+                'mistakes_count'   => $validated['mistakes_count'] ?? 0,
+                'remarks'          => $validated['remarks'] ?? null,
+            ];
+
+            // 1. Update primary record
+            $primaryData = array_merge($baseData, ['category' => $primaryCategory]);
+            $primaryData = $this->attachCategoryDetails($primaryData, $primaryCategory, $validated);
+            $record->update($primaryData);
+
+            // 2. Create additional records for extra selected categories if any
+            for ($i = 1; $i < count($selectedCategories); $i++) {
+                $cat = $selectedCategories[$i];
+                $extraData = array_merge($baseData, [
+                    'category'   => $cat,
+                    'created_by' => Auth::id(),
+                ]);
+                $extraData = $this->attachCategoryDetails($extraData, $cat, $validated);
+                QuranModule::create($extraData);
+            }
+        });
+
+        $count = count($selectedCategories);
+        $message = $count > 1
+            ? "Record updated and {$count} progress entries saved successfully!"
+            : "Quran progress record updated successfully!";
 
         return redirect()->route('quran-module.show', $record->id)
-            ->with('success', 'Quran progress record updated successfully!');
+            ->with('success', $message);
+    }
+
+    private function attachCategoryDetails(array $data, string $cat, array $validated): array
+    {
+        if ($cat === 'Hifz') {
+            $data['sabaq']                  = $validated['sabaq'] ?? null;
+            $data['sabqi']                  = $validated['sabqi'] ?? null;
+            $data['manzil']                 = $validated['manzil'] ?? null;
+            $data['total_parahs_memorized'] = $validated['total_parahs_memorized'] ?? 0;
+        } elseif ($cat === 'Nazra') {
+            $data['para_no']    = $validated['para_no'] ?? null;
+            $data['surah_name'] = $validated['surah_name'] ?? null;
+            $data['ayah_from']  = $validated['ayah_from'] ?? null;
+            $data['ayah_to']    = $validated['ayah_to'] ?? null;
+        } elseif ($cat === 'Qaida') {
+            $data['lesson_name'] = $validated['qaida_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+        } elseif ($cat === 'Tajweed') {
+            $data['lesson_name'] = $validated['tajweed_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+        } elseif ($cat === 'Hadith') {
+            $data['lesson_name'] = $validated['hadith_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+        } elseif ($cat === 'Dua') {
+            $data['lesson_name'] = $validated['dua_lesson_name'] ?? ($validated['lesson_name'] ?? null);
+        }
+
+        return $data;
     }
 
     public function destroy($id)
@@ -176,12 +340,38 @@ class QuranModuleController extends Controller
             ->with('success', 'Quran progress record deleted successfully!');
     }
 
-    // AJAX: Get students for selected class name
-    public function getStudentsByClass($className)
+    // AJAX: Get classes for selected academic session
+    public function getClassesBySession($sessionId)
     {
-        $students = Student::where('class_name', $className)
-            ->orderBy('first_name')
-            ->get(['id', 'first_name', 'last_name', 'roll_no']);
+        $query = Student::where('status', 'active');
+        if ($sessionId && $sessionId !== 'all') {
+            $query->where('academic_session_id', $sessionId);
+        }
+
+        $classNames = $query->whereNotNull('class_name')->distinct()->pluck('class_name');
+
+        if ($classNames->isEmpty()) {
+            $classes = StudentClass::where('status', 'active')->orderBy('name')->get(['id', 'name']);
+        } else {
+            $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get(['id', 'name']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'classes' => $classes
+        ]);
+    }
+
+    // AJAX: Get students for selected class name and optional session
+    public function getStudentsByClass(Request $request, $className)
+    {
+        $query = Student::where('class_name', $className)->where('status', 'active');
+
+        if ($request->filled('session_id') && $request->session_id !== 'all') {
+            $query->where('academic_session_id', $request->session_id);
+        }
+
+        $students = $query->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'roll_no']);
 
         return response()->json([
             'success'  => true,
@@ -202,3 +392,4 @@ class QuranModuleController extends Controller
         ]);
     }
 }
+

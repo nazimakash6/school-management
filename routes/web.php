@@ -215,6 +215,7 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::post('payroll/{id}/restore', [PayrollController::class, 'restore'])->name('payroll.restore');
 	Route::delete('payroll/{id}/force-delete', [PayrollController::class, 'forceDelete'])->name('payroll.force-delete');
 	Route::resource('payroll', PayrollController::class);
+	Route::get('quran-module/get-classes-by-session/{sessionId}', [QuranModuleController::class, 'getClassesBySession'])->name('quran-module.get-classes-by-session');
 	Route::get('quran-module/get-students/{className}', [QuranModuleController::class, 'getStudentsByClass'])->name('quran-module.get-students');
 	Route::get('quran-module/latest-progress/{studentId}', [QuranModuleController::class, 'getStudentLatestProgress'])->name('quran-module.latest-progress');
 	Route::resource('quran-module', QuranModuleController::class);

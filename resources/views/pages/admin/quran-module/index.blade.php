@@ -108,15 +108,17 @@
     {{-- Filter Bar --}}
     <div class="card border-0 shadow-sm rounded-3 mb-4">
         <div class="card-body p-3">
-            <form action="{{ route('quran-module.index') }}" method="GET" class="row g-2 align-items-center">
-                <div class="col-md-3">
+            <form action="{{ route('quran-module.index') }}" method="GET" class="row g-3 align-items-end">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label text-muted small fw-semibold mb-1">Search Student</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white text-muted border-end-0"><i data-lucide="search" style="width:0.9rem;height:0.9rem;"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0" placeholder="Search student name or roll..." value="{{ request('search') }}">
+                        <input type="text" name="search" class="form-control border-start-0" placeholder="Search name or roll..." value="{{ request('search') }}">
                     </div>
                 </div>
 
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label text-muted small fw-semibold mb-1">Category</label>
                     <select name="category" class="form-select form-select-sm">
                         <option value="">All Categories</option>
                         <option value="Hifz" {{ request('category') === 'Hifz' ? 'selected' : '' }}>Hifz (Memorization)</option>
@@ -128,7 +130,8 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label text-muted small fw-semibold mb-1">Class</label>
                     <select name="class_name" class="form-select form-select-sm">
                         <option value="">All Classes</option>
                         @foreach($classes as $cls)
@@ -137,7 +140,8 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label text-muted small fw-semibold mb-1">Status</label>
                     <select name="status" class="form-select form-select-sm">
                         <option value="">All Statuses</option>
                         <option value="In Progress" {{ request('status') === 'In Progress' ? 'selected' : '' }}>In Progress</option>
@@ -147,11 +151,11 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-3 d-flex gap-2 justify-content-end">
-                    <button type="submit" class="btn btn-primary btn-sm px-3 d-inline-flex align-items-center gap-1">
+                <div class="col-12 col-lg-3 d-flex gap-2 justify-content-lg-end ms-auto">
+                    <button type="submit" class="btn btn-primary btn-sm px-3 flex-fill flex-lg-grow-0 d-inline-flex align-items-center justify-content-center gap-1">
                         <i data-lucide="filter" style="width:0.85rem;height:0.85rem;"></i> Filter
                     </button>
-                    <a href="{{ route('quran-module.index') }}" class="btn btn-outline-secondary btn-sm px-3">
+                    <a href="{{ route('quran-module.index') }}" class="btn btn-outline-secondary btn-sm px-3 flex-fill flex-lg-grow-0 text-center">
                         Reset
                     </a>
                 </div>

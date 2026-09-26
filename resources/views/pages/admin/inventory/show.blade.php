@@ -51,37 +51,67 @@
     <div class="row g-4">
         {{-- Left Column: Image Proof Viewer --}}
         <div class="col-lg-5">
-            <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100">
-                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <i data-lucide="shield-check" class="text-success" style="width:1.2rem;height:1.2rem;"></i>
-                        Verified Image Proof
-                    </h6>
-                    <span class="badge bg-secondary text-white">{{ $item->image_proof_type ?: 'Receipt/Proof' }}</span>
-                </div>
-
-                <div class="card-body p-3 text-center bg-light d-flex flex-column align-items-center justify-content-center">
-                    <div class="proof-large-container w-100 mb-3" style="max-height: 380px; overflow: hidden; position: relative;">
-                        <img src="{{ $item->image_proof_url }}" alt="Verified Image Proof" class="img-fluid w-100" style="object-fit: cover; max-height: 360px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
+            @if($item->image_proof && $item->image_proof_url)
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i data-lucide="shield-check" class="text-success" style="width:1.2rem;height:1.2rem;"></i>
+                            Verified Image Proof
+                        </h6>
+                        <span class="badge bg-secondary text-white">{{ $item->image_proof_type ?: 'Receipt/Proof' }}</span>
                     </div>
 
-                    <div class="d-flex gap-2 w-100 justify-content-center">
-                        <button type="button" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
-                            <i data-lucide="zoom-in" style="width:0.9rem;height:0.9rem;"></i> Zoom / Expand Image Proof
-                        </button>
-                        <a href="{{ $item->image_proof_url }}" target="_blank" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
-                            <i data-lucide="external-link" style="width:0.9rem;height:0.9rem;"></i> Open Full Image
+                    <div class="card-body p-3 text-center bg-light d-flex flex-column align-items-center justify-content-center">
+                        <div class="proof-large-container w-100 mb-3" style="max-height: 380px; overflow: hidden; position: relative;">
+                            <img src="{{ $item->image_proof_url }}" alt="Verified Image Proof" class="img-fluid w-100" style="object-fit: cover; max-height: 360px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
+                        </div>
+
+                        <div class="d-flex gap-2 w-100 justify-content-center">
+                            <button type="button" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#imageProofModal" onclick="openProofModal('{{ $item->image_proof_url }}', '{{ addslashes($item->item_name) }}', '{{ $item->image_proof_type ?: 'Proof' }}')">
+                                <i data-lucide="zoom-in" style="width:0.9rem;height:0.9rem;"></i> Zoom / Expand Image Proof
+                            </button>
+                            <a href="{{ $item->image_proof_url }}" target="_blank" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
+                                <i data-lucide="external-link" style="width:0.9rem;height:0.9rem;"></i> Open Full Image
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-white border-top py-3 text-muted small">
+                        <div class="d-flex align-items-center gap-2 text-success fw-semibold">
+                            <i data-lucide="check-circle" style="width:1rem;height:1rem;"></i>
+                            <span>Proof document is attached &amp; verified for audit compliance</span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden h-100">
+                    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i data-lucide="image-off" class="text-secondary" style="width:1.2rem;height:1.2rem;"></i>
+                            Image Proof
+                        </h6>
+                        <span class="badge bg-light text-muted border">No Proof Attached</span>
+                    </div>
+
+                    <div class="card-body p-4 text-center bg-light d-flex flex-column align-items-center justify-content-center min-vh-25 py-5">
+                        <div class="p-3 bg-white rounded-circle shadow-sm mb-3">
+                            <i data-lucide="image-off" class="text-muted" style="width:2.5rem;height:2.5rem;"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">No Image Proof Uploaded</h6>
+                        <p class="text-muted small mb-3" style="max-width:280px;">No invoice receipt or physical photo was attached for this inventory item.</p>
+                        <a href="{{ route('inventory.edit', $item->id) }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                            <i data-lucide="upload-cloud" style="width:0.9rem;height:0.9rem;"></i> Upload Image Proof
                         </a>
                     </div>
-                </div>
 
-                <div class="card-footer bg-white border-top py-3 text-muted small">
-                    <div class="d-flex align-items-center gap-2 text-success fw-semibold">
-                        <i data-lucide="check-circle" style="width:1rem;height:1rem;"></i>
-                        <span>Proof document is attached &amp; verified for audit compliance</span>
+                    <div class="card-footer bg-white border-top py-3 text-muted small">
+                        <div class="d-flex align-items-center gap-2 text-muted">
+                            <i data-lucide="info" style="width:1rem;height:1rem;"></i>
+                            <span>You can upload an image proof anytime by editing this item.</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            @endif
         </div>
 
         {{-- Right Column: Item Information Breakdown --}}
@@ -100,9 +130,11 @@
                             <label class="text-muted small fw-semibold text-uppercase d-block">Item Name</label>
                             <h4 class="fw-bold text-dark mb-1">{{ $item->item_name }}</h4>
                             <div class="d-flex align-items-center gap-2 mt-2">
-                                <span class="badge badge-category {{ $item->category_badge_class }}">
-                                    {{ $item->category }}
-                                </span>
+                                @foreach($item->categories_list as $cat)
+                                    <span class="badge badge-category {{ \App\Models\Inventory::getCategoryBadgeClassForName($cat) }}">
+                                        {{ $cat }}
+                                    </span>
+                                @endforeach
                                 <span class="badge {{ $item->status_badge_class }}">
                                     {{ $item->status }}
                                 </span>

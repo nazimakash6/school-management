@@ -72,14 +72,35 @@
                                 <input type="text" name="item_code" class="form-control font-monospace" placeholder="Item Code" value="{{ old('item_code', $item->item_code) }}">
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold text-dark small">Category <span class="text-danger">*</span></label>
-                                <select name="category" class="form-select" required>
-                                    <option value="">-- Select Category --</option>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-dark small d-flex align-items-center justify-content-between">
+                                    <span>Category <span class="text-danger">*</span> <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-1 fw-normal">Multi-select</span></span>
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">Select one or multiple categories</span>
+                                </label>
+
+                                @php
+                                    $itemCats = old('categories', $item->categories_list);
+                                @endphp
+                                <div class="d-flex flex-wrap gap-2 mb-2" id="categoryPillsContainer">
                                     @foreach($categories as $cat)
-                                        <option value="{{ $cat }}" {{ old('category', $item->category) === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                        @php $isSelected = in_array($cat, $itemCats); @endphp
+                                        <button type="button" class="category-pill-btn {{ $isSelected ? 'active' : '' }}" data-cat="{{ $cat }}">
+                                            <span>{{ $cat }}</span>
+                                            <i data-lucide="check" class="check-icon ms-1 text-primary" style="width:1rem;height:1rem; {{ $isSelected ? '' : 'display:none;' }}"></i>
+                                        </button>
                                     @endforeach
-                                </select>
+                                </div>
+
+                                <div id="categoriesInputsContainer">
+                                    @foreach($itemCats as $cat)
+                                        <input type="hidden" name="categories[]" value="{{ $cat }}">
+                                    @endforeach
+                                </div>
+
+                                <div id="categoryRequiredAlert" class="text-danger small mt-1 fw-semibold" style="display: none;">
+                                    <i data-lucide="alert-circle" style="width:0.85rem;height:0.85rem;" class="me-1"></i>
+                                    Please select at least one category.
+                                </div>
                             </div>
 
                             <div class="col-md-3">
@@ -231,17 +252,38 @@
                         </div>
 
                         {{-- Current Image Preview --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold text-dark small">Current Attached Proof</label>
-                            <div class="proof-large-container p-2 text-center">
-                                <img id="imagePreviewImg" src="{{ $item->image_proof_url }}" alt="Proof Preview" class="img-fluid rounded" style="max-height: 180px; object-fit: contain;">
+                        @if($item->image_proof && $item->image_proof_url)
+                            <div class="mb-3" id="currentProofContainer">
+                                <label class="form-label fw-semibold text-dark small">Current Attached Proof</label>
+                                <div class="proof-large-container p-2 text-center border rounded bg-light">
+                                    <img id="imagePreviewImg" src="{{ $item->image_proof_url }}" alt="Proof Preview" class="img-fluid rounded" style="max-height: 180px; object-fit: contain;">
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="remove_image_proof" value="1" id="removeImageProof">
+                                    <label class="form-check-label text-danger small fw-semibold" for="removeImageProof">
+                                        Remove current attached image proof
+                                    </label>
+                                </div>
                             </div>
-                        </div>
+                        @else
+                            <div class="mb-3" id="noProofNotice">
+                                <label class="form-label fw-semibold text-dark small">Current Attached Proof</label>
+                                <div class="p-3 bg-light rounded text-center text-muted small border">
+                                    <i data-lucide="image-off" class="me-1" style="width:1rem;height:1rem;"></i> No image proof currently attached.
+                                </div>
+                            </div>
+                            <div class="mb-3" id="imagePreviewContainer" style="display: none;">
+                                <label class="form-label fw-semibold text-dark small">New Image Preview</label>
+                                <div class="proof-large-container p-2 text-center border rounded bg-light">
+                                    <img id="imagePreviewImg" src="" alt="Proof Preview" class="img-fluid rounded" style="max-height: 180px; object-fit: contain;">
+                                </div>
+                            </div>
+                        @endif
 
                         <div>
-                            <label class="form-label fw-semibold text-dark small">Replace Image Proof (Optional)</label>
+                            <label class="form-label fw-semibold text-dark small">Upload / Replace Image Proof</label>
                             <input type="file" name="image_proof" id="imageProofInput" class="form-control form-control-sm" accept="image/*" onchange="previewImageProof(this)">
-                            <div class="text-muted mt-1" style="font-size:0.75rem;">Leave empty to keep existing proof document.</div>
+                            <div class="text-muted mt-1" style="font-size:0.75rem;">Leave empty to keep existing state.</div>
                         </div>
                     </div>
                 </div>
@@ -286,13 +328,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     qtyInput.addEventListener('input', updateTotal);
     priceInput.addEventListener('input', updateTotal);
+
+    // Multi-Category Pill Toggle
+    const pillsContainer = document.getElementById('categoryPillsContainer');
+    const inputsContainer = document.getElementById('categoriesInputsContainer');
+    const categoryAlert = document.getElementById('categoryRequiredAlert');
+
+    if (pillsContainer) {
+        pillsContainer.addEventListener('click', function(e) {
+            const btn = e.target.closest('.category-pill-btn');
+            if (!btn) return;
+
+            btn.classList.toggle('active');
+
+            const activeBtns = pillsContainer.querySelectorAll('.category-pill-btn.active');
+            if (activeBtns.length === 0) {
+                btn.classList.add('active');
+                if (categoryAlert) categoryAlert.style.display = 'block';
+            } else {
+                if (categoryAlert) categoryAlert.style.display = 'none';
+            }
+
+            updateSelectedCategories();
+        });
+    }
+
+    function updateSelectedCategories() {
+        if (!pillsContainer || !inputsContainer) return;
+        const activeBtns = pillsContainer.querySelectorAll('.category-pill-btn.active');
+        inputsContainer.innerHTML = '';
+
+        activeBtns.forEach(b => {
+            const cat = b.getAttribute('data-cat');
+            const checkIcon = b.querySelector('.check-icon');
+            if (checkIcon) checkIcon.style.display = 'inline-block';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'categories[]';
+            input.value = cat;
+            inputsContainer.appendChild(input);
+        });
+
+        pillsContainer.querySelectorAll('.category-pill-btn:not(.active)').forEach(b => {
+            const checkIcon = b.querySelector('.check-icon');
+            if (checkIcon) checkIcon.style.display = 'none';
+        });
+    }
+
+    updateSelectedCategories();
 });
 
 function previewImageProof(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            document.getElementById('imagePreviewImg').src = e.target.result;
+            const img = document.getElementById('imagePreviewImg');
+            if (img) img.src = e.target.result;
+            const container = document.getElementById('imagePreviewContainer');
+            if (container) container.style.display = 'block';
         };
         reader.readAsDataURL(input.files[0]);
     }

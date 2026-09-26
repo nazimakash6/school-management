@@ -67,14 +67,35 @@
                                 <input type="text" name="item_code" class="form-control" placeholder="Auto-generated if empty" value="{{ old('item_code') }}">
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold text-dark small">Category <span class="text-danger">*</span></label>
-                                <select name="category" class="form-select" required>
-                                    <option value="">-- Select Category --</option>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-dark small d-flex align-items-center justify-content-between">
+                                    <span>Category <span class="text-danger">*</span> <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-1 fw-normal">Multi-select</span></span>
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">Select one or multiple categories</span>
+                                </label>
+
+                                @php
+                                    $oldCats = old('categories', ['Electronics & IT']);
+                                @endphp
+                                <div class="d-flex flex-wrap gap-2 mb-2" id="categoryPillsContainer">
                                     @foreach($categories as $cat)
-                                        <option value="{{ $cat }}" {{ old('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                        @php $isSelected = in_array($cat, $oldCats); @endphp
+                                        <button type="button" class="category-pill-btn {{ $isSelected ? 'active' : '' }}" data-cat="{{ $cat }}">
+                                            <span>{{ $cat }}</span>
+                                            <i data-lucide="check" class="check-icon ms-1 text-primary" style="width:1rem;height:1rem; {{ $isSelected ? '' : 'display:none;' }}"></i>
+                                        </button>
                                     @endforeach
-                                </select>
+                                </div>
+
+                                <div id="categoriesInputsContainer">
+                                    @foreach($oldCats as $cat)
+                                        <input type="hidden" name="categories[]" value="{{ $cat }}">
+                                    @endforeach
+                                </div>
+
+                                <div id="categoryRequiredAlert" class="text-danger small mt-1 fw-semibold" style="display: none;">
+                                    <i data-lucide="alert-circle" style="width:0.85rem;height:0.85rem;" class="me-1"></i>
+                                    Please select at least one category.
+                                </div>
                             </div>
 
                             <div class="col-md-3">
@@ -287,6 +308,55 @@ document.addEventListener('DOMContentLoaded', function() {
     qtyInput.addEventListener('input', updateTotal);
     priceInput.addEventListener('input', updateTotal);
     updateTotal();
+
+    // Multi-Category Pill Toggle
+    const pillsContainer = document.getElementById('categoryPillsContainer');
+    const inputsContainer = document.getElementById('categoriesInputsContainer');
+    const categoryAlert = document.getElementById('categoryRequiredAlert');
+
+    if (pillsContainer) {
+        pillsContainer.addEventListener('click', function(e) {
+            const btn = e.target.closest('.category-pill-btn');
+            if (!btn) return;
+
+            btn.classList.toggle('active');
+
+            const activeBtns = pillsContainer.querySelectorAll('.category-pill-btn.active');
+            if (activeBtns.length === 0) {
+                btn.classList.add('active');
+                if (categoryAlert) categoryAlert.style.display = 'block';
+            } else {
+                if (categoryAlert) categoryAlert.style.display = 'none';
+            }
+
+            updateSelectedCategories();
+        });
+    }
+
+    function updateSelectedCategories() {
+        if (!pillsContainer || !inputsContainer) return;
+        const activeBtns = pillsContainer.querySelectorAll('.category-pill-btn.active');
+        inputsContainer.innerHTML = '';
+
+        activeBtns.forEach(b => {
+            const cat = b.getAttribute('data-cat');
+            const checkIcon = b.querySelector('.check-icon');
+            if (checkIcon) checkIcon.style.display = 'inline-block';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'categories[]';
+            input.value = cat;
+            inputsContainer.appendChild(input);
+        });
+
+        pillsContainer.querySelectorAll('.category-pill-btn:not(.active)').forEach(b => {
+            const checkIcon = b.querySelector('.check-icon');
+            if (checkIcon) checkIcon.style.display = 'none';
+        });
+    }
+
+    updateSelectedCategories();
 });
 
 function previewImageProof(input) {

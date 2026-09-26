@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('item_code')->nullable()->unique();
             $table->string('item_name');
-            $table->string('category')->default('General');
+            $table->text('category')->nullable();
             $table->integer('quantity')->default(1);
             $table->integer('min_quantity_alert')->default(5);
             $table->string('unit')->default('Pcs');

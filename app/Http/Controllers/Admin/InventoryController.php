@@ -27,7 +27,8 @@ class InventoryController extends Controller
 
         // Category filter
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
+            $cat = $request->category;
+            $query->where('category', 'like', "%{$cat}%");
         }
 
         // Status filter
@@ -50,7 +51,7 @@ class InventoryController extends Controller
             'in_use_count'   => Inventory::where('status', 'In Use')->count(),
         ];
 
-        $categories = Inventory::select('category')->distinct()->pluck('category');
+        $categories = ['Electronics & IT', 'Furniture', 'Lab Equipment', 'Stationery', 'Sports Goods', 'Maintenance & Cleaning', 'Library Supplies', 'Other'];
         $locations  = Inventory::select('location')->whereNotNull('location')->distinct()->pluck('location');
 
         return view('pages.admin.inventory.index', compact('items', 'stats', 'categories', 'locations'));
@@ -67,7 +68,8 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'item_code'          => 'nullable|string|max:100|unique:inventories,item_code',
             'item_name'          => 'required|string|max:255',
-            'category'           => 'required|string|max:100',
+            'categories'         => 'required|array|min:1',
+            'categories.*'       => 'required|string|max:100',
             'quantity'           => 'required|integer|min:0',
             'min_quantity_alert' => 'nullable|integer|min:0',
             'unit'               => 'required|string|max:50',
@@ -86,6 +88,10 @@ class InventoryController extends Controller
             'notes'              => 'nullable|string',
         ]);
 
+        $cats = $request->input('categories', []);
+        $validated['category'] = json_encode(array_values(array_unique($cats)));
+        unset($validated['categories']);
+
         if ($request->hasFile('image_proof')) {
             $path = $request->file('image_proof')->store('inventory_proofs', 'public');
             $validated['image_proof'] = $path;
@@ -97,7 +103,7 @@ class InventoryController extends Controller
         Inventory::create($validated);
 
         return redirect()->route('inventory.index')
-            ->with('success', 'Inventory item added successfully with image proof!');
+            ->with('success', 'Inventory item added successfully!');
     }
 
     public function show($id)
@@ -120,7 +126,8 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'item_code'          => 'nullable|string|max:100|unique:inventories,item_code,' . $id,
             'item_name'          => 'required|string|max:255',
-            'category'           => 'required|string|max:100',
+            'categories'         => 'required|array|min:1',
+            'categories.*'       => 'required|string|max:100',
             'quantity'           => 'required|integer|min:0',
             'min_quantity_alert' => 'nullable|integer|min:0',
             'unit'               => 'required|string|max:50',
@@ -139,7 +146,17 @@ class InventoryController extends Controller
             'notes'              => 'nullable|string',
         ]);
 
-        if ($request->hasFile('image_proof')) {
+        $cats = $request->input('categories', []);
+        $validated['category'] = json_encode(array_values(array_unique($cats)));
+        unset($validated['categories']);
+
+        if ($request->boolean('remove_image_proof')) {
+            if ($item->image_proof && !str_starts_with($item->image_proof, 'http')) {
+                Storage::disk('public')->delete($item->image_proof);
+            }
+            $validated['image_proof'] = null;
+            $validated['image_proof_type'] = null;
+        } elseif ($request->hasFile('image_proof')) {
             // Delete old file if stored locally
             if ($item->image_proof && !str_starts_with($item->image_proof, 'http')) {
                 Storage::disk('public')->delete($item->image_proof);
