@@ -167,11 +167,15 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::resource('houses', HouseController::class);
 	Route::get('collect-payment/create', [FeeManagementController::class, 'createCollectPayment'])->name('collect-payment.create');
 	Route::post('collect-payment/store', [FeeManagementController::class, 'storeGeneralCollectPayment'])->name('collect-payment.store');
+	Route::get('collect-payment/{id}/edit', [FeeManagementController::class, 'editPayment'])->name('collect-payment.edit');
+	Route::put('collect-payment/{id}', [FeeManagementController::class, 'updatePayment'])->name('collect-payment.update');
+	Route::delete('collect-payment/{id}', [FeeManagementController::class, 'destroyPayment'])->name('collect-payment.destroy');
 	Route::get('fee-management/trash', [FeeManagementController::class, 'trash'])->name('fee-management.trash');
 	Route::get('fee-statement', [FeeManagementController::class, 'statement'])->name('fee-management.statement');
 	Route::get('fee-statement/export', [FeeManagementController::class, 'exportStatement'])->name('fee-management.statement.export');
 	Route::get('fee-statement/print', [FeeManagementController::class, 'printStatement'])->name('fee-management.statement.print');
 	Route::get('fee-management/collect-payment', [FeeManagementController::class, 'collectPaymentFormGeneral'])->name('fee-management.collect-payment-general');
+	Route::get('fee-management/{id}/print', [FeeManagementController::class, 'printVoucher'])->name('fee-management.print');
 	Route::get('fee-management/{id}/collect-payment', [FeeManagementController::class, 'collectPaymentForm'])->name('fee-management.collect-payment');
 	Route::post('fee-management/{id}/collect-payment', [FeeManagementController::class, 'storePayment'])->name('fee-management.store-payment');
 	Route::get('fee-management/payment/{paymentId}/receipt', [FeeManagementController::class, 'printPaymentReceipt'])->name('fee-management.payment-receipt');

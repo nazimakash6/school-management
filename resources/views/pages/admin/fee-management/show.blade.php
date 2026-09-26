@@ -24,10 +24,10 @@
             <h4 class="mb-0 fw-bold text-dark">Student Fee Voucher / Challan</h4>
           </div>
           <div class="d-flex gap-2 flex-wrap align-items-center">
-            <button type="button" onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5">
+            <a href="{{ route('fee-management.print', $invoice->id) }}" target="_blank" class="btn btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5 fw-bold" style="background-color: #c7ad8d; border-color: #c7ad8d; color: #3d1a06;">
               <i data-lucide="printer" style="width:1rem;height:1rem;"></i> Print Voucher
-            </button>
-            <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-emerald-600 text-white btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5" style="background-color: #059669; border-color: #059669;">
+            </a>
+            <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-success text-white btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5 fw-bold" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border: none;">
               <i data-lucide="banknote" style="width:1rem;height:1rem;"></i> Collect Payment
             </a>
             <a href="{{ route('fee-management.edit', $invoice) }}" class="btn btn-outline-secondary btn-sm px-3 d-inline-flex align-items-center gap-1.5">
@@ -46,7 +46,7 @@
           <div class="d-flex align-items-center gap-2 mb-2">
             <span class="invoice-badge-no"><i data-lucide="receipt" style="width:0.875rem;height:0.875rem;" class="me-1"></i> INVOICE • {{ $invoice->invoice_no }}</span>
             @if ($invoice->status === 'paid')
-              <span class="badge bg-emerald-500 text-white px-2.5 py-1 rounded-pill fs-7"><i data-lucide="check-circle-2" style="width:0.8rem;height:0.8rem;" class="me-1"></i> PAID</span>
+              <span class="badge text-white px-2.5 py-1 rounded-pill fs-7" style="background-color: #3d1a06;"><i data-lucide="check-circle-2" style="width:0.8rem;height:0.8rem;" class="me-1"></i> PAID</span>
             @elseif ($invoice->status === 'partial')
               <span class="badge bg-amber-500 text-white px-2.5 py-1 rounded-pill fs-7"><i data-lucide="pie-chart" style="width:0.8rem;height:0.8rem;" class="me-1"></i> PARTIAL PAYMENT</span>
             @elseif ($invoice->status === 'unpaid')
@@ -165,9 +165,9 @@
               </tr>
               @if($invoice->discount > 0)
                 <tr>
-                  <td class="fw-medium text-success"><i data-lucide="tag" style="width:1rem;height:1rem;" class="me-2 text-success"></i> Less: Scholarship / Concession Discount</td>
-                  <td><span class="badge bg-success-subtle text-success border border-success-subtle">Discount</span></td>
-                  <td class="text-end fw-bold text-success">- Rs. {{ number_format($invoice->discount, 2) }}</td>
+                  <td class="fw-medium" style="color: #6b4d3b;"><i data-lucide="tag" style="width:1rem;height:1rem;" class="me-2 text-secondary"></i> Less: Scholarship / Concession Discount</td>
+                  <td><span class="badge border" style="background-color: #f5eee0; color: #5c2c10; border-color: #c7ad8d !important;">Discount</span></td>
+                  <td class="text-end fw-bold" style="color: #6b4d3b;">- Rs. {{ number_format($invoice->discount, 2) }}</td>
                 </tr>
               @endif
               <tr class="table-light">
@@ -175,12 +175,12 @@
                 <td class="text-end fw-bold text-dark">Rs. {{ number_format($invoice->net_amount, 2) }}</td>
               </tr>
               <tr>
-                <td class="fw-medium text-emerald-600" colspan="2"><i data-lucide="check-circle" style="width:1rem;height:1rem;" class="me-2 text-emerald-600"></i> Total Paid Amount Received</td>
-                <td class="text-end fw-bold text-emerald-600">Rs. {{ number_format($invoice->paid_amount, 2) }}</td>
+                <td class="fw-medium" style="color: #3d1a06;" colspan="2"><i data-lucide="check-circle" style="width:1rem;height:1rem;" class="me-2" style="color: #3d1a06;"></i> Total Paid Amount Received</td>
+                <td class="text-end fw-bold" style="color: #3d1a06;">Rs. {{ number_format($invoice->paid_amount, 2) }}</td>
               </tr>
             </tbody>
             <tfoot>
-              <tr class="{{ $invoice->due_balance > 0 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success' }}">
+              <tr class="{{ $invoice->due_balance > 0 ? 'bg-danger-subtle text-danger' : 'text-dark' }}" style="{{ $invoice->due_balance > 0 ? '' : 'background-color: #f5eee0; color: #3d1a06;' }}">
                 <th colspan="2" class="fs-6 fw-bold">REMAINING OUTSTANDING BALANCE DUE</th>
                 <th class="text-end fs-5 fw-extrabold">Rs. {{ number_format($invoice->due_balance, 2) }}</th>
               </tr>
@@ -219,7 +219,7 @@
                     <td>{{ $prev->fee_month }}</td>
                     <td class="text-danger">{{ $prev->due_date ? $prev->due_date->format('d M Y') : 'N/A' }}</td>
                     <td>Rs. {{ number_format($prev->amount, 2) }}</td>
-                    <td class="text-success">Rs. {{ number_format($prev->paid_amount, 2) }}</td>
+                    <td style="color: #3d1a06;">Rs. {{ number_format($prev->paid_amount, 2) }}</td>
                     <td class="text-end fw-bold text-danger">Rs. {{ number_format($prev->due_balance, 2) }}</td>
                     <td class="text-end">
                       <a href="{{ route('fee-management.show', $prev->id) }}" class="btn btn-outline-primary btn-sm py-0.5 px-2 rounded-pill fs-8" target="_blank">
@@ -230,6 +230,104 @@
                 @endforeach
               </tbody>
             </table>
+          </div>
+        </div>
+      @endif
+
+      {{-- SIBLINGS FEE DETAILS & PAYMENT HISTORY --}}
+      @if(!empty($siblingFeeSummaries) && count($siblingFeeSummaries) > 0)
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+          <div class="card-header py-3 px-4 border-bottom d-flex justify-content-between align-items-center" style="background-color: #f8f4ed;">
+            <h6 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #3d1a06;">
+              <i data-lucide="users" style="width:1.2rem;height:1.2rem;color: #3d1a06;"></i> Siblings Fee & Payment Records
+            </h6>
+            <span class="badge text-white px-2 py-1 fs-7" style="background-color: #3d1a06;">
+              {{ count($siblingFeeSummaries) }} {{ Str::plural('Sibling', count($siblingFeeSummaries)) }}
+            </span>
+          </div>
+          <div class="card-body p-4">
+            @foreach($siblingFeeSummaries as $sibData)
+              @php
+                $sib = $sibData['student'];
+                $sibInvoices = $sibData['invoices'];
+              @endphp
+              <div class="border rounded-3 p-3 mb-3 bg-light-subtle">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <div>
+                    <h6 class="fw-bold mb-0 text-dark">
+                      {{ $sib->first_name }} {{ $sib->last_name }}
+                    </h6>
+                    <small class="text-muted">
+                      Adm No: <strong>{{ $sib->admission_no }}</strong> &bull; Class: <strong>{{ $sib->class_name }}</strong> {{ $sib->section_name ? '('.$sib->section_name.')' : '' }}
+                    </small>
+                  </div>
+                  <div class="d-flex align-items-center gap-3 mt-2 mt-sm-0">
+                    <div class="text-end">
+                      <small class="text-muted d-block fs-8">Total Fee</small>
+                      <span class="fw-semibold text-dark">Rs. {{ number_format($sibData['total_invoiced'], 2) }}</span>
+                    </div>
+                    <div class="text-end">
+                      <small class="text-muted d-block fs-8">Total Paid</small>
+                      <span class="fw-bold text-success">Rs. {{ number_format($sibData['total_paid'], 2) }}</span>
+                    </div>
+                    <div class="text-end">
+                      <small class="text-muted d-block fs-8">Remaining Due</small>
+                      <span class="fw-bold {{ $sibData['total_due'] > 0 ? 'text-danger' : 'text-muted' }}">Rs. {{ number_format($sibData['total_due'], 2) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                @if($sibInvoices->isNotEmpty())
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0 fs-7 bg-white">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Voucher #</th>
+                          <th>Fee Type</th>
+                          <th>Fee Month</th>
+                          <th>Fee Amount</th>
+                          <th>Paid Amount</th>
+                          <th>Due Balance</th>
+                          <th>Status</th>
+                          <th class="text-end">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach($sibInvoices as $sInv)
+                          <tr>
+                            <td class="fw-bold text-primary font-monospace">{{ $sInv->invoice_no }}</td>
+                            <td class="text-capitalize">{{ str_replace('_', ' ', $sInv->fee_type) }}</td>
+                            <td>{{ $sInv->fee_month }}</td>
+                            <td class="fw-semibold">Rs. {{ number_format($sInv->net_amount, 2) }}</td>
+                            <td class="text-success fw-semibold">Rs. {{ number_format($sInv->paid_amount, 2) }}</td>
+                            <td class="fw-bold {{ $sInv->due_balance > 0 ? 'text-danger' : 'text-muted' }}">
+                              Rs. {{ number_format($sInv->due_balance, 2) }}
+                            </td>
+                            <td>
+                              <span class="badge {{ $sInv->status_badge_class }} text-capitalize px-2 py-0.5 fs-8">
+                                {{ $sInv->status }}
+                              </span>
+                            </td>
+                            <td class="text-end">
+                              <a href="{{ route('fee-management.show', $sInv->id) }}" class="btn btn-outline-secondary btn-sm py-0 px-2 fs-8 me-1" target="_blank" title="View Voucher">
+                                View
+                              </a>
+                              @if($sInv->due_balance > 0)
+                                <a href="{{ route('fee-management.collect-payment', $sInv->id) }}" class="btn btn-sm text-white py-0 px-2 fs-8" style="background-color: #3d1a06;" title="Collect Payment">
+                                  Collect Fee
+                                </a>
+                              @endif
+                            </td>
+                          </tr>
+                        @endforeach
+                      </tbody>
+                    </table>
+                  </div>
+                @else
+                  <p class="text-muted fs-7 mb-0 italic">No fee invoices recorded for this sibling yet.</p>
+                @endif
+              </div>
+            @endforeach
           </div>
         </div>
       @endif
@@ -251,7 +349,7 @@
             <i data-lucide="history" class="text-primary" style="width:1.2rem;height:1.2rem;"></i>
             Payment Transactions History / Receipts
           </h5>
-          <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+          <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-success btn-sm text-white d-inline-flex align-items-center gap-1 fw-bold" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border: none;">
             <i data-lucide="plus" style="width:0.875rem;height:0.875rem;"></i> Collect Payment
           </a>
         </div>
@@ -282,16 +380,26 @@
                         {{ str_replace('_', ' ', $payment->payment_method) }}
                       </span>
                     </td>
-                    <td class="fw-bold text-success">
+                    <td class="fw-bold" style="color: #3d1a06;">
                       Rs. {{ number_format($payment->amount, 2) }}
                     </td>
                     <td class="fs-7 text-muted">
                       {{ $payment->note ?: '—' }}
                     </td>
-                    <td class="text-end pe-3">
-                      <a href="{{ route('fee-management.payment-receipt', $payment->id) }}" target="_blank" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1" title="Print Receipt">
-                        <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i> Receipt
+                    <td class="text-end pe-3 text-nowrap">
+                      <a href="{{ route('fee-management.payment-receipt', $payment->id) }}" target="_blank" class="btn btn-sm btn-outline-info me-1" title="Print Receipt">
+                        <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i>
                       </a>
+                      <a href="{{ route('collect-payment.edit', $payment->id) }}" class="btn btn-sm btn-outline-warning me-1" title="Edit Payment">
+                        <i data-lucide="edit-2" style="width:0.875rem;height:0.875rem;"></i>
+                      </a>
+                      <form action="{{ route('collect-payment.destroy', $payment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this payment record?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Payment">
+                          <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
+                        </button>
+                      </form>
                     </td>
                   </tr>
                 @empty
@@ -307,7 +415,7 @@
                 <tfoot class="bg-light border-top">
                   <tr>
                     <td colspan="3" class="fw-bold text-end ps-3 fs-7">Total Paid Collected:</td>
-                    <td class="fw-bold text-success fs-6">Rs. {{ number_format($invoice->payments->sum('amount'), 2) }}</td>
+                    <td class="fw-bold fs-6" style="color: #3d1a06;">Rs. {{ number_format($invoice->payments->sum('amount'), 2) }}</td>
                     <td colspan="2"></td>
                   </tr>
                 </tfoot>
@@ -320,250 +428,6 @@
     </div>
   </div>
 
-  {{-- ══════════════════════════════════════════════════
-       A4 MODERN FEE VOUCHER — print only (hidden on screen)
-  ══════════════════════════════════════════════════ --}}
-  <div class="print-a4-invoice">
-
-    @php
-      $schoolInfo = \App\Models\SchoolInfo::first();
-      $status     = $invoice->status;
-    @endphp
-
-    {{-- Status-based watermark --}}
-    <div class="fv-watermark {{ $status }}">{{ strtoupper($status) }}</div>
-
-    {{-- ── Gradient Header ── --}}
-    <div class="fv-header">
-      <div class="fv-logo-wrap">
-        @if($schoolInfo && $schoolInfo->logo_url)
-          <img src="{{ $schoolInfo->logo_url }}" alt="Logo" class="fv-logo">
-        @else
-          <div class="fv-logo-ph">{{ strtoupper(substr($schoolInfo->school_name ?? 'S', 0, 1)) }}</div>
-        @endif
-        <div>
-          <div class="fv-school-name">{{ $schoolInfo->school_name ?? 'School Name' }}</div>
-          <div class="fv-school-sub">
-            {{ $schoolInfo->full_address ?? '' }}
-            @if($schoolInfo && $schoolInfo->phone) &bull; {{ $schoolInfo->phone }} @endif
-            @if($schoolInfo && $schoolInfo->email) &bull; {{ $schoolInfo->email }} @endif
-          </div>
-        </div>
-      </div>
-      <div class="fv-badge-wrap">
-        <div class="fv-doc-title">Fee<br>Voucher</div>
-        <div class="fv-invoice-no">{{ $invoice->invoice_no }}</div>
-        <div class="fv-print-date">Print Date: {{ now()->format('d M Y') }}</div>
-      </div>
-    </div>
-
-    {{-- ── Status Stripe ── --}}
-    <div class="fv-status-stripe {{ $status }}">
-      <span>
-        @if($status === 'paid') ✓ Fee Fully Paid &amp; Cleared
-        @elseif($status === 'partial') ◑ Partial Payment Received — Balance Pending
-        @elseif($status === 'unpaid') ✗ Fee Unpaid — Immediate Payment Required
-        @else ✗ Invoice Cancelled
-        @endif
-      </span>
-      <span>
-        Due Date: {{ $invoice->due_date ? $invoice->due_date->format('d M Y') : 'N/A' }}
-      </span>
-    </div>
-
-    {{-- ── Student Hero Strip ── --}}
-    <div class="fv-student-hero">
-      <div>
-        <div class="fv-student-name">
-          {{ $invoice->admission ? ($invoice->admission->first_name . ' ' . $invoice->admission->last_name) : 'Student' }}
-        </div>
-        <div class="fv-student-meta">
-          Adm No: {{ $invoice->admission ? $invoice->admission->admission_no : '—' }}
-          &bull; Class: {{ $invoice->admission ? $invoice->admission->class_name : '—' }}
-          {{ $invoice->admission && $invoice->admission->section_name ? '(' . $invoice->admission->section_name . ')' : '' }}
-          &bull; Month: {{ $invoice->fee_month }}
-        </div>
-      </div>
-      <div>
-        <div class="fv-balance-label">Outstanding Balance</div>
-        <div class="fv-balance-amount" style="color:{{ $invoice->due_balance > 0 ? '#dc2626' : '#16a34a' }};">
-          Rs. {{ number_format($invoice->due_balance, 2) }}
-        </div>
-      </div>
-    </div>
-
-    {{-- ── Body ── --}}
-    <div class="fv-body">
-
-      {{-- Two-column info cards --}}
-      <div class="fv-two-col">
-        {{-- Student info --}}
-        <div class="fv-col">
-          <div class="fv-card">
-            <div class="fv-card-head">🎓 Student Information</div>
-            <div class="fv-row"><span class="fv-lbl">Full Name</span>      <span class="fv-val">{{ $invoice->admission ? ($invoice->admission->first_name . ' ' . $invoice->admission->last_name) : 'N/A' }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Admission No.</span>  <span class="fv-val">{{ $invoice->admission ? $invoice->admission->admission_no : 'N/A' }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Father / Guardian</span><span class="fv-val">{{ $invoice->admission ? ($invoice->admission->father_name ?: $invoice->admission->guardian_name) : 'N/A' }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Class &amp; Section</span><span class="fv-val">{{ $invoice->admission ? ($invoice->admission->class_name . ' ' . ($invoice->admission->section_name ? '('.$invoice->admission->section_name.')' : '')) : 'N/A' }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Contact Phone</span>  <span class="fv-val">{{ $invoice->admission ? ($invoice->admission->mobile_number ?: 'N/A') : 'N/A' }}</span></div>
-          </div>
-        </div>
-        {{-- Invoice info --}}
-        <div class="fv-col">
-          <div class="fv-card">
-            <div class="fv-card-head">🧾 Voucher &amp; Billing Details</div>
-            <div class="fv-row"><span class="fv-lbl">Invoice / Voucher No.</span> <span class="fv-val" style="color:#0369a1;font-family:monospace;">{{ $invoice->invoice_no }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Fee Classification</span>    <span class="fv-val" style="text-transform:capitalize;">{{ str_replace('_', ' ', $invoice->fee_type) }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Billing Month/Session</span> <span class="fv-val">{{ $invoice->fee_month }}</span></div>
-            <div class="fv-row"><span class="fv-lbl">Due Date</span>              <span class="fv-val" style="color:#dc2626;">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : 'N/A' }}</span></div>
-            <div class="fv-row">
-              <span class="fv-lbl">Payment Date</span>
-              <span class="fv-val">{{ $invoice->payment_date ? $invoice->payment_date->format('d M Y') . ' (' . str_replace('_',' ',$invoice->payment_method) . ')' : 'Pending Settlement' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {{-- Fee summary cards --}}
-      <div class="fv-fin-row">
-        <div class="fv-fin-cell fv-fc-base">
-          <div class="fv-fin-label">Base Fee</div>
-          <div class="fv-fin-amt">Rs. {{ number_format($invoice->amount, 2) }}</div>
-          <div class="fv-fin-sub">Standard charge</div>
-        </div>
-        <div class="fv-fin-cell fv-fc-disc">
-          <div class="fv-fin-label">Discount</div>
-          <div class="fv-fin-amt">− Rs. {{ number_format($invoice->discount, 2) }}</div>
-          <div class="fv-fin-sub">Scholarship/concession</div>
-        </div>
-        <div class="fv-fin-cell fv-fc-net">
-          <div class="fv-fin-label">Net Payable</div>
-          <div class="fv-fin-amt">Rs. {{ number_format($invoice->net_amount, 2) }}</div>
-          <div class="fv-fin-sub">After deductions</div>
-        </div>
-      </div>
-
-      {{-- Ledger breakdown --}}
-      <table class="fv-ledger">
-        <thead>
-          <tr><th colspan="3">Fee Payment Ledger</th></tr>
-          <tr>
-            <th style="width:52%;">Description</th>
-            <th class="text-r" style="width:24%;">Amount (Rs.)</th>
-            <th class="text-r" style="width:24%;">Running Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <strong>Base Fee</strong> — {{ ucwords(str_replace('_',' ',$invoice->fee_type)) }}<br>
-              <span style="color:#94a3b8;font-size:7pt;">{{ $invoice->fee_month }}</span>
-            </td>
-            <td class="text-r" style="color:#1d4ed8;font-weight:700;">{{ number_format($invoice->amount, 2) }}</td>
-            <td class="text-r" style="font-weight:700;">{{ number_format($invoice->amount, 2) }}</td>
-          </tr>
-          @if($invoice->discount > 0)
-          <tr>
-            <td>
-              <strong>Discount / Concession</strong><br>
-              <span style="color:#94a3b8;font-size:7pt;">Scholarship or special reduction</span>
-            </td>
-            <td class="text-r" style="color:#15803d;font-weight:700;">− {{ number_format($invoice->discount, 2) }}</td>
-            <td class="text-r">{{ number_format($invoice->net_amount, 2) }}</td>
-          </tr>
-          @endif
-          @if($invoice->paid_amount > 0)
-          <tr>
-            <td>
-              <strong>Amount Received</strong><br>
-              <span style="color:#94a3b8;font-size:7pt;">{{ $invoice->payment_date ? $invoice->payment_date->format('d M Y') . ' via ' . str_replace('_',' ',$invoice->payment_method) : 'Partial payments received' }}</span>
-            </td>
-            <td class="text-r" style="color:#15803d;font-weight:700;">− {{ number_format($invoice->paid_amount, 2) }}</td>
-            <td class="text-r">{{ number_format($invoice->due_balance, 2) }}</td>
-          </tr>
-          @endif
-          @if(isset($previousUnpaid) && $previousUnpaid->isNotEmpty())
-            @foreach($previousUnpaid as $prevInv)
-            <tr style="background-color: #fef2f2;">
-              <td>
-                <strong style="color: #dc2626;">Previous Unpaid Arrears</strong> — {{ $prevInv->invoice_no }} ({{ ucwords(str_replace('_',' ',$prevInv->fee_type)) }})<br>
-                <span style="color: #b91c1c; font-size: 7pt;">Billing Month: {{ $prevInv->fee_month }} &bull; Due Date: {{ $prevInv->due_date ? $prevInv->due_date->format('d M Y') : 'N/A' }}</span>
-              </td>
-              <td class="text-r" style="color: #dc2626; font-weight: 700;">+ {{ number_format($prevInv->due_balance, 2) }}</td>
-              <td class="text-r" style="color: #dc2626; font-weight: 700;">Pending Arrears</td>
-            </tr>
-            @endforeach
-          @endif
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2" class="text-r" style="font-size:8pt;color:{{ $invoice->due_balance > 0 ? '#dc2626' : '#16a34a' }};font-weight:800;">
-              OUTSTANDING BALANCE DUE:
-            </td>
-            <td class="text-r" style="font-size:9.5pt;color:{{ $invoice->due_balance > 0 ? '#dc2626' : '#16a34a' }};font-weight:900;">
-              Rs. {{ number_format($invoice->due_balance, 2) }}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-
-      {{-- Outstanding balance box --}}
-      <div class="fv-balance-box {{ $invoice->due_balance > 0 ? 'overdue' : 'clear' }}">
-        <div>
-          <div class="fv-bb-label">{{ $invoice->due_balance > 0 ? 'Outstanding Balance Due' : 'Account Fully Settled' }}</div>
-          <div class="fv-bb-sub">
-            Net: Rs. {{ number_format($invoice->net_amount,2) }} &nbsp;&bull;&nbsp;
-            Paid: Rs. {{ number_format($invoice->paid_amount,2) }}
-          </div>
-        </div>
-        <div class="fv-bb-amount">Rs. {{ number_format($invoice->due_balance, 2) }}</div>
-      </div>
-
-      {{-- Notes --}}
-      @if($invoice->notes)
-        <div class="fv-notes">
-          <span class="fv-notes-title">📝 Special Notes / Payment Instructions</span>{{ $invoice->notes }}
-        </div>
-      @endif
-
-      <hr class="fv-divider">
-
-      {{-- Signatures --}}
-      <div class="fv-sig-row">
-        <div class="fv-sig-cell">
-          <span class="fv-sig-space"></span>
-          <div class="fv-sig-line"></div>
-          <div class="fv-sig-name">Cashier / Accounts Officer</div>
-          <div class="fv-sig-role">Fee Collector</div>
-        </div>
-        <div class="fv-sig-cell">
-          @if($schoolInfo && $schoolInfo->stamp_url)
-            <img src="{{ $schoolInfo->stamp_url }}" alt="Stamp" class="fv-stamp-img"><br>
-          @else
-            <span class="fv-sig-space"></span>
-          @endif
-          <div class="fv-sig-line"></div>
-          <div class="fv-sig-name">Official Seal</div>
-          <div class="fv-sig-role">School Stamp</div>
-        </div>
-        <div class="fv-sig-cell">
-          <span class="fv-sig-space"></span>
-          <div class="fv-sig-line"></div>
-          <div class="fv-sig-name">{{ $schoolInfo->principal_name ?? 'Principal / Director' }}</div>
-          <div class="fv-sig-role">Authorized Signatory</div>
-        </div>
-      </div>
-
-    </div>{{-- /fv-body --}}
-
-    {{-- Footer --}}
-    <div class="fv-footer">
-      <span>{{ $schoolInfo->school_name ?? 'School ERP' }} &bull; {{ $schoolInfo->full_address ?? '' }}</span>
-      <span>Generated: {{ now()->format('d-M-Y h:i A') }} &bull; Invoice: {{ $invoice->invoice_no }}</span>
-    </div>
-
-  </div>{{-- /print-a4-invoice --}}
-
   @if($invoice->due_balance > 0 && $invoice->status !== 'cancelled')
     <!-- PAYMENT RECORD MODAL -->
     <div class="modal fade text-start no-print" id="payModalShow" tabindex="-1" aria-hidden="true">
@@ -573,7 +437,7 @@
             @csrf
             <div class="modal-header bg-light border-bottom py-3">
               <h5 class="modal-title fs-6 fw-bold text-dark d-flex align-items-center gap-2">
-                <i data-lucide="banknote" class="text-emerald-600" style="width:1.2rem;height:1.2rem;"></i> Record Fee Payment
+                <i data-lucide="banknote" style="color: #3d1a06; width:1.2rem;height:1.2rem;"></i> Record Fee Payment
               </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -602,7 +466,7 @@
             </div>
             <div class="modal-footer bg-light border-top py-3">
               <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-success btn-sm px-4 fw-semibold" style="background-color: #059669; border-color: #059669;">
+              <button type="submit" class="btn btn-dark btn-sm px-4 fw-semibold" style="background-color: #3d1a06; border-color: #3d1a06;">
                 Confirm & Save Payment
               </button>
             </div>

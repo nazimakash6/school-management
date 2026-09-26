@@ -181,10 +181,20 @@
                 <td class="fs-7 text-muted">
                   {{ $pm->note ?: '—' }}
                 </td>
-                <td class="text-end pe-3">
-                  <a href="{{ route('fee-management.payment-receipt', $pm->id) }}" target="_blank" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1" title="Print Receipt">
-                    <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i> Receipt
+                <td class="text-end pe-3 text-nowrap">
+                  <a href="{{ route('fee-management.payment-receipt', $pm->id) }}" target="_blank" class="btn btn-sm btn-outline-info me-1" title="Print Receipt">
+                    <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i>
                   </a>
+                  <a href="{{ route('collect-payment.edit', $pm->id) }}" class="btn btn-sm btn-outline-warning me-1" title="Edit Payment">
+                    <i data-lucide="edit-2" style="width:0.875rem;height:0.875rem;"></i>
+                  </a>
+                  <form action="{{ route('collect-payment.destroy', $pm->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this payment record?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Payment">
+                      <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
+                    </button>
+                  </form>
                 </td>
               </tr>
             @empty
