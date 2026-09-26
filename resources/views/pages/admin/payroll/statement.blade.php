@@ -63,9 +63,12 @@
         display: block !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 0 !important;
-        background: #ffffff !important;
+        padding: 5mm 6mm !important;
+        background: #fdfaf3 !important;
+        border: 3px double #3d1a06 !important;
+        color: #3d1a06 !important;
         position: static !important;
+        font-family: 'Times New Roman', 'Georgia', serif !important;
       }
 
       .statement-print-table {
@@ -76,17 +79,22 @@
 
       .statement-print-table th,
       .statement-print-table td {
-        border: 1px solid #cbd5e1 !important;
-        padding: 3px 5px !important;
-        font-size: 7.5pt !important;
+        border: 1px solid #c7ad8d !important;
+        padding: 4px 6px !important;
+        font-size: 8pt !important;
         vertical-align: middle !important;
+        color: #3d1a06 !important;
       }
 
       .statement-print-table th {
-        background-color: #f8fafc !important;
-        color: #1e293b !important;
+        background-color: #3d1a06 !important;
+        color: #fdfaf3 !important;
         font-weight: 700 !important;
         text-transform: uppercase !important;
+      }
+
+      .statement-print-table tr:nth-child(even) {
+        background-color: #f7f0e4 !important;
       }
     }
   </style>
@@ -320,126 +328,4 @@
     </div>
   </div>
 
-  {{-- ==========================================
-      A4 PRINTABLE TRANSACTION STATEMENT DOCUMENT
-  =========================================== --}}
-  <div class="print-a4-statement">
-    <div style="text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 12px;">
-      <h2 style="margin: 0; font-size: 16pt; font-weight: bold; color: #1e40af; text-transform: uppercase;">
-        {{ $globalSchoolInfo->school_name ?? 'NOOR UL HUDA SUPERIOR SCHOOL' }}
-      </h2>
-      <p style="margin: 2px 0 0 0; font-size: 9pt; color: #475569;">
-        {{ $globalSchoolInfo->full_address ?? 'Dhanote, District Lodhran' }} | Phone: {{ $globalSchoolInfo->phone ?? '03266850002' }} | Email: {{ $globalSchoolInfo->email ?? 'Superiorschoolnps@gmail.com' }}
-      </p>
-      <h4 style="margin: 8px 0 0 0; font-size: 11pt; font-weight: bold; background: #eff6ff; display: inline-block; padding: 3px 12px; border-radius: 4px; border: 1px solid #bfdbfe; color: #1e40af;">
-        OFFICIAL PAYROLL TRANSACTION STATEMENT & AUDIT LEDGER
-      </h4>
-    </div>
-
-    {{-- Statement Scope Summary --}}
-    <div class="print-section-title">1. Statement Scope & Audit Summary</div>
-    <table class="payslip-table-grid">
-      <tr>
-        <th style="width: 15%;">Period Scope</th>
-        <td style="width: 35%;">
-          {{ $startDate ? date('d-M-Y', strtotime($startDate)) : 'Beginning' }} to {{ $endDate ? date('d-M-Y', strtotime($endDate)) : 'Present' }}
-        </td>
-        <th style="width: 15%;">Staff Filter</th>
-        <td style="width: 35%;">
-          {{ $selectedStaff ? $selectedStaff->full_name . ' (' . $selectedStaff->staff_id . ')' : 'All Active Staff' }}
-        </td>
-      </tr>
-      <tr>
-        <th>Department</th>
-        <td>{{ $department !== 'all' ? ucwords(str_replace(['_', '-'], ' ', $department)) : 'All Departments' }}</td>
-        <th>Payment Status</th>
-        <td><strong>{{ strtoupper($status) }}</strong></td>
-      </tr>
-      <tr>
-        <th>Total Records</th>
-        <td><strong>{{ count($payrolls) }} Transactions</strong></td>
-        <th>Total Disbursed</th>
-        <td><strong style="color: #2563eb;">Rs. {{ number_format($totalNetSalary, 2) }}</strong></td>
-      </tr>
-      <tr>
-        <th>Paid Settlement</th>
-        <td style="color: #059669;">Rs. {{ number_format($paidAmount, 2) }}</td>
-        <th>Pending Liability</th>
-        <td style="color: #d97706;">Rs. {{ number_format($pendingAmount, 2) }}</td>
-      </tr>
-    </table>
-
-    {{-- Itemized Ledger Table --}}
-    <div class="print-section-title">2. Itemized Payroll Disbursement Ledger</div>
-    <table class="statement-print-table">
-      <thead>
-        <tr>
-          <th style="width: 25px;">#</th>
-          <th>Staff Name & ID</th>
-          <th>Department</th>
-          <th>Month</th>
-          <th>Method</th>
-          <th style="text-align: right;">Basic (PKR)</th>
-          <th style="text-align: right;">Allow (PKR)</th>
-          <th style="text-align: right;">Deduc (PKR)</th>
-          <th style="text-align: right;">Net Pay (PKR)</th>
-          <th>Status</th>
-          <th>Pay Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($payrolls as $index => $p)
-          <tr>
-            <td>{{ $index + 1 }}</td>
-            <td>
-              <strong>{{ $p->staff ? $p->staff->full_name : 'N/A' }}</strong>
-              <div style="font-size: 6.5pt; color: #64748b;">{{ $p->staff ? $p->staff->staff_id : '' }}</div>
-            </td>
-            <td>{{ $p->staff ? $p->staff->formatted_department : 'N/A' }}</td>
-            <td>{{ $p->payroll_month }}</td>
-            <td style="text-transform: capitalize;">{{ str_replace('_', ' ', $p->payment_method) }}</td>
-            <td style="text-align: right;">{{ number_format($p->basic_salary, 2) }}</td>
-            <td style="text-align: right; color: #059669;">+{{ number_format($p->allowance, 2) }}</td>
-            <td style="text-align: right; color: #dc2626;">-{{ number_format($p->deduction, 2) }}</td>
-            <td style="text-align: right; font-weight: 700; color: #2563eb;">{{ number_format($p->net_salary, 2) }}</td>
-            <td><strong>{{ strtoupper($p->status) }}</strong></td>
-            <td>{{ $p->payment_date ? $p->payment_date->format('d-M-Y') : 'Pending' }}</td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="11" style="text-align: center;">No transaction records found matching the filter criteria.</td>
-          </tr>
-        @endforelse
-      </tbody>
-      @if(count($payrolls) > 0)
-        <tfoot>
-          <tr style="font-weight: 700; background-color: #f1f5f9;">
-            <td colspan="5">SUMMARY TOTAL ({{ count($payrolls) }} RECORDS)</td>
-            <td style="text-align: right;">Rs. {{ number_format($totalBasic, 2) }}</td>
-            <td style="text-align: right; color: #059669;">+Rs. {{ number_format($totalAllowance, 2) }}</td>
-            <td style="text-align: right; color: #dc2626;">-Rs. {{ number_format($totalDeduction, 2) }}</td>
-            <td style="text-align: right; color: #2563eb; font-size: 8.5pt;">Rs. {{ number_format($totalNetSalary, 2) }}</td>
-            <td colspan="2"></td>
-          </tr>
-        </tfoot>
-      @endif
-    </table>
-
-    {{-- Signatures --}}
-    <div class="signature-row d-flex justify-content-between align-items-end" style="margin-top: 25px;">
-      <div class="signature-col">
-        <div class="signature-line-box">Accounts / Finance Officer</div>
-      </div>
-      <div class="signature-col">
-        <div class="signature-line-box">Audited By (HR Manager)</div>
-      </div>
-      <div class="signature-col">
-        <div class="signature-line-box">Approved By (Principal/Director)</div>
-      </div>
-    </div>
-
-    <div class="payslip-footer-note">
-      This is an official computer-generated payroll transaction statement printed from EduCore ERP System on {{ date('F d, Y \a\t h:i A') }}.
-    </div>
-  </div>
 @endsection

@@ -827,6 +827,18 @@
                                     </option>
                                 </select>
                             </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Class Fee</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    class="form-control"
+                                    name="class_fee"
+                                    value="{{ old('class_fee', $student->class_fee) }}"
+                                    placeholder="e.g. 5000"
+                                />
+                            </div>
 
                             <div class="col-12">
                                 <label class="form-label">Placement Notes</label>

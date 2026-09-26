@@ -21,10 +21,23 @@ return new class extends Migration {
             $table->softDeletes();
             $table->timestamps();
         });
+
+        Schema::create('staff_advance_repayments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('staff_advance_id')->nullable()->constrained('staff_advances')->onDelete('cascade');
+            $table->foreignId('staff_id')->constrained('staff')->onDelete('cascade');
+            $table->foreignId('payroll_id')->nullable()->constrained('payrolls')->onDelete('set null');
+            $table->decimal('amount', 12, 2)->default(0);
+            $table->date('repayment_date');
+            $table->string('repayment_type')->default('cash');
+            $table->string('notes')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('staff_advance_repayments');
         Schema::dropIfExists('staff_advances');
     }
 };

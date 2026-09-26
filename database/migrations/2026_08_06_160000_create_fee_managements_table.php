@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('fee_managements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('admission_id')->constrained('admissions')->onDelete('cascade');
+            $table->foreignId('academic_session_id')->nullable()->constrained('academic_sessions')->onDelete('set null');
             $table->string('invoice_no')->unique();
             $table->string('fee_type')->default('tuition');
             $table->string('fee_month');

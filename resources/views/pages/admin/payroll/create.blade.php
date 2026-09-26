@@ -84,10 +84,33 @@
           @enderror
         </div>
 
+        <!-- Existing Payroll Warning Alert -->
+        <div id="existing_payroll_alert" class="col-md-12 d-none">
+          <div class="alert alert-warning border border-warning d-flex align-items-center justify-content-between p-3 mb-0 shadow-sm rounded-3">
+            <div>
+              <h6 class="fw-bold mb-1 text-dark d-flex align-items-center gap-1">
+                <i data-lucide="alert-triangle" class="text-warning" style="width:1.2rem;height:1.2rem;"></i>
+                Payroll Entry Already Exists
+              </h6>
+              <p class="mb-0 text-dark small" id="existing_payroll_text">
+                A payroll record has already been created for this staff member for the selected month.
+              </p>
+            </div>
+            <div>
+              <a href="#" id="existing_payroll_link" target="_blank" class="btn btn-warning btn-sm fw-bold">
+                View Payslip <i data-lucide="external-link" style="width:0.875rem;height:0.875rem;" class="ms-1"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
         <!-- Dynamic Staff & Advance Info Card -->
         <div class="col-md-12">
           <div id="staff_advance_info_card" class="p-3 bg-light rounded border d-none">
-            <h6 class="fw-bold text-dark mb-2">Staff & Advance Overview</h6>
+            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+              <i data-lucide="user-check" class="text-primary" style="width:1rem;height:1rem;"></i>
+              Staff &amp; Financial Overview
+            </h6>
             <div class="row text-center g-2">
               <div class="col-md-4">
                 <div class="bg-white p-2 rounded border shadow-sm">
@@ -97,15 +120,52 @@
               </div>
               <div class="col-md-4">
                 <div class="bg-white p-2 rounded border shadow-sm">
-                  <small class="text-muted d-block">Advance Balance</small>
+                  <small class="text-muted d-block">Unpaid Advance Balance</small>
                   <span class="fw-bold text-danger fs-6" id="info_advance_balance">Rs. 0.00</span>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="bg-white p-2 rounded border shadow-sm">
-                  <small class="text-muted d-block">Department & Designation</small>
+                  <small class="text-muted d-block">Department &amp; Designation</small>
                   <span class="fw-semibold text-dark fs-6" id="info_dept_desig">N/A</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unpaid Salary Advances Breakdown Card -->
+        <div id="unpaid_advances_card" class="col-md-12 d-none">
+          <div class="card border border-danger-subtle bg-danger-subtle bg-opacity-10 shadow-sm">
+            <div class="card-header bg-white py-2.5 d-flex justify-content-between align-items-center">
+              <h6 class="mb-0 fw-bold text-danger d-flex align-items-center gap-2" style="font-size: 0.9rem;">
+                <i data-lucide="alert-circle" style="width:1.1rem;height:1.1rem;"></i>
+                Active / Unpaid Salary Advances History
+              </h6>
+              <span class="badge bg-danger text-white rounded-pill px-2.5 py-1" id="unpaid_count_badge">0 Unpaid</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3">Voucher No</th>
+                      <th>Advance Date</th>
+                      <th>Reason / Purpose</th>
+                      <th class="text-end">Sanctioned (Rs.)</th>
+                      <th class="text-end">Repaid (Rs.)</th>
+                      <th class="text-end pe-3">Unpaid Balance (Rs.)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="unpaid_advances_tbody">
+                  </tbody>
+                  <tfoot>
+                    <tr class="table-danger fw-bold">
+                      <td colspan="5" class="text-end ps-3">TOTAL UNPAID ADVANCE DEDUCTION:</td>
+                      <td class="text-end pe-3 text-danger fs-6" id="unpaid_advances_total">Rs. 0.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </div>
@@ -197,7 +257,7 @@
 
         <div class="col-12 text-end mt-4">
           <a href="{{ route('payroll.index') }}" class="btn btn-secondary me-2">Cancel</a>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" id="submit_payroll_btn" class="btn btn-primary">
             <i data-lucide="save" style="width:1rem;height:1rem;" class="me-1"></i> Save Payroll Entry
           </button>
         </div>
@@ -211,6 +271,28 @@
     <script>
       $(document).ready(function () {
         const $staffSelect = $('#staff_id');
+        const monthInput = document.getElementById('payroll_month');
+        const basicSalaryInput = document.getElementById('basic_salary');
+        const allowanceInput = document.getElementById('allowance');
+        const deductionInput = document.getElementById('deduction');
+        const netSalaryDisplay = document.getElementById('netSalaryDisplay');
+        const notesTextarea = document.getElementById('notes');
+        const submitBtn = document.getElementById('submit_payroll_btn');
+
+        const infoCard = document.getElementById('staff_advance_info_card');
+        const infoSalary = document.getElementById('info_basic_salary');
+        const infoAdvance = document.getElementById('info_advance_balance');
+        const infoDeptDesig = document.getElementById('info_dept_desig');
+        const deductionHelp = document.getElementById('deduction_help_text');
+
+        const existingAlert = document.getElementById('existing_payroll_alert');
+        const existingText = document.getElementById('existing_payroll_text');
+        const existingLink = document.getElementById('existing_payroll_link');
+
+        const unpaidCard = document.getElementById('unpaid_advances_card');
+        const unpaidTbody = document.getElementById('unpaid_advances_tbody');
+        const unpaidCountBadge = document.getElementById('unpaid_count_badge');
+        const unpaidTotalElem = document.getElementById('unpaid_advances_total');
 
         $staffSelect.select2({
           theme: 'bootstrap-5',
@@ -218,18 +300,6 @@
           allowClear: true,
           width: '100%'
         });
-
-        const basicSalaryInput = document.getElementById('basic_salary');
-        const allowanceInput = document.getElementById('allowance');
-        const deductionInput = document.getElementById('deduction');
-        const netSalaryDisplay = document.getElementById('netSalaryDisplay');
-        const notesTextarea = document.getElementById('notes');
-
-        const infoCard = document.getElementById('staff_advance_info_card');
-        const infoSalary = document.getElementById('info_basic_salary');
-        const infoAdvance = document.getElementById('info_advance_balance');
-        const infoDeptDesig = document.getElementById('info_dept_desig');
-        const deductionHelp = document.getElementById('deduction_help_text');
 
         function formatMoney(amount) {
           const val = parseFloat(amount || 0);
@@ -252,59 +322,120 @@
           }
         }
 
-        function handleStaffChange() {
-          const staffSelectElem = $staffSelect[0];
-          if (!staffSelectElem || staffSelectElem.selectedIndex < 0) {
+        function fetchStaffDetails() {
+          const staffId = $staffSelect.val();
+          const monthVal = monthInput ? monthInput.value : '';
+
+          if (!staffId) {
             infoCard.classList.add('d-none');
+            unpaidCard.classList.add('d-none');
+            existingAlert.classList.add('d-none');
             basicSalaryInput.value = 0;
             deductionInput.value = 0;
+            if (submitBtn) submitBtn.disabled = false;
             updateNetSalary();
             return;
           }
 
-          const selectedOption = staffSelectElem.options[staffSelectElem.selectedIndex];
-          if (!selectedOption || !staffSelectElem.value) {
-            infoCard.classList.add('d-none');
-            basicSalaryInput.value = 0;
-            deductionInput.value = 0;
-            updateNetSalary();
-            return;
-          }
+          const url = "{{ route('payroll.staff-details') }}?staff_id=" + staffId + "&month=" + encodeURIComponent(monthVal);
 
-          const salary = parseFloat(selectedOption.getAttribute('data-salary') || 0);
-          const advance = parseFloat(selectedOption.getAttribute('data-advance') || 0);
-          const dept = selectedOption.getAttribute('data-dept') || '';
-          const desig = selectedOption.getAttribute('data-desig') || '';
+          fetch(url)
+            .then(res => res.json())
+            .then(data => {
+              if (!data.success) return;
 
-          infoCard.classList.remove('d-none');
-          infoSalary.textContent = formatMoney(salary);
-          infoAdvance.textContent = formatMoney(advance);
-          infoDeptDesig.textContent = dept + (desig ? ' • ' + desig : '');
+              const staff = data.staff;
+              const existing = data.existing_payroll;
+              const unpaidList = data.unpaid_advances || [];
+              const totalUnpaid = parseFloat(data.total_unpaid_advance || 0);
 
-          basicSalaryInput.value = salary;
+              // 1. Staff Overview
+              infoCard.classList.remove('d-none');
+              infoSalary.textContent = formatMoney(staff.salary);
+              infoAdvance.textContent = formatMoney(totalUnpaid);
+              infoDeptDesig.textContent = staff.department + (staff.designation ? ' • ' + staff.designation : '');
+              basicSalaryInput.value = staff.salary;
 
-          // Auto-set deduction to advance amount if advance exists
-          if (advance > 0) {
-            deductionInput.value = advance;
-            deductionHelp.textContent = 'Auto-filled with active salary advance balance of ' + formatMoney(advance);
-            if (!notesTextarea.value || notesTextarea.value.includes('Auto-deducted salary advance')) {
-              notesTextarea.value = 'Auto-deducted salary advance: ' + formatMoney(advance);
-            }
-          } else {
-            deductionInput.value = 0;
-            deductionHelp.textContent = 'No active salary advance';
-          }
+              // 2. Existing Payroll Warning
+              if (existing) {
+                existingAlert.classList.remove('d-none');
+                existingText.innerHTML = 'A payroll entry for <strong>' + staff.full_name + '</strong> for month <strong>' + existing.payroll_month + '</strong> already exists with status <span class="badge bg-secondary">' + existing.status + '</span> (' + existing.formatted_net + ').';
+                existingLink.href = existing.view_url;
+                if (submitBtn) {
+                  submitBtn.disabled = true;
+                  submitBtn.title = "Payroll already exists for this staff member in " + existing.payroll_month;
+                }
+              } else {
+                existingAlert.classList.add('d-none');
+                if (submitBtn) {
+                  submitBtn.disabled = false;
+                  submitBtn.title = "";
+                }
+              }
 
-          updateNetSalary();
+              // 3. Unpaid Advances Breakdown Table
+              if (unpaidList.length > 0) {
+                unpaidCard.classList.remove('d-none');
+                unpaidCountBadge.textContent = unpaidList.length + ' Unpaid Record(s)';
+                unpaidTotalElem.textContent = formatMoney(totalUnpaid);
+
+                let rowsHtml = '';
+                unpaidList.forEach(adv => {
+                  rowsHtml += `
+                    <tr>
+                      <td class="ps-3 font-monospace fw-bold text-dark">${adv.voucher_no}</td>
+                      <td>${adv.advance_date}</td>
+                      <td>${adv.reason}</td>
+                      <td class="text-end">Rs. ${parseFloat(adv.advance_amount).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                      <td class="text-end text-success">Rs. ${parseFloat(adv.repaid_amount).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                      <td class="text-end pe-3 fw-bold text-danger">Rs. ${parseFloat(adv.unpaid_balance).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                    </tr>
+                  `;
+                });
+                unpaidTbody.innerHTML = rowsHtml;
+
+                const suggestedDeduction = parseFloat(data.suggested_deduction || totalUnpaid);
+                deductionInput.value = suggestedDeduction;
+
+                if (totalUnpaid > staff.salary) {
+                  const carryForward = totalUnpaid - suggestedDeduction;
+                  deductionHelp.textContent = 'Auto-filled Rs. ' + suggestedDeduction.toLocaleString('en-US', {minimumFractionDigits:2}) + ' deduction (repaying advance up to monthly salary). Remaining ' + formatMoney(carryForward) + ' carries forward.';
+                  if (!notesTextarea.value || notesTextarea.value.includes('Auto-deducted salary advance')) {
+                    notesTextarea.value = 'Auto-deducted salary advance: ' + formatMoney(suggestedDeduction) + ' (Remaining ' + formatMoney(carryForward) + ' advance carries forward)';
+                  }
+                } else {
+                  deductionHelp.textContent = 'Auto-filled with active salary advance balance of ' + formatMoney(totalUnpaid);
+                  if (!notesTextarea.value || notesTextarea.value.includes('Auto-deducted salary advance')) {
+                    notesTextarea.value = 'Auto-deducted salary advance: ' + formatMoney(totalUnpaid);
+                  }
+                }
+              } else {
+                unpaidCard.classList.add('d-none');
+                unpaidTbody.innerHTML = '';
+                deductionInput.value = 0;
+                deductionHelp.textContent = 'No active salary advance';
+                if (notesTextarea.value.includes('Auto-deducted salary advance')) {
+                  notesTextarea.value = '';
+                }
+              }
+
+              updateNetSalary();
+              if (window.lucide) {
+                window.lucide.createIcons();
+              }
+            })
+            .catch(err => {
+              console.error('Error fetching staff details:', err);
+            });
         }
 
-        $staffSelect.on('change', handleStaffChange);
+        $staffSelect.on('change', fetchStaffDetails);
+        $(monthInput).on('change input', fetchStaffDetails);
         allowanceInput.addEventListener('input', updateNetSalary);
         deductionInput.addEventListener('input', updateNetSalary);
 
-        // Run initial calculation if staff is selected on load
         if ($staffSelect.val()) {
-          handleStaffChange();
+          fetchStaffDetails();
         } else {
           updateNetSalary();
         }

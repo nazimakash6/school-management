@@ -201,6 +201,8 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::get('payroll-trash', [PayrollController::class, 'trash'])->name('payroll.trash');
 	Route::post('payroll/bulk-action', [PayrollController::class, 'bulkAction'])->name('payroll.bulk-action');
 	Route::post('payroll/generate-monthly', [PayrollController::class, 'generateMonthly'])->name('payroll.generate-monthly');
+	Route::get('payroll/staff-details', [PayrollController::class, 'getStaffDetails'])->name('payroll.staff-details');
+	Route::post('payroll/{id}/restore', [PayrollController::class, 'restore'])->name('payroll.restore');
 	Route::delete('payroll/{id}/force-delete', [PayrollController::class, 'forceDelete'])->name('payroll.force-delete');
 	Route::resource('payroll', PayrollController::class);
 	Route::get('quran-module/get-students/{className}', [QuranModuleController::class, 'getStudentsByClass'])->name('quran-module.get-students');

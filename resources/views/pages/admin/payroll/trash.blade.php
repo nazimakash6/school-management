@@ -94,7 +94,7 @@
                 @endif
               </td>
               <td><span class="badge bg-light text-dark font-monospace">{{ $payroll->payroll_month }}</span></td>
-              <td><span class="fw-bold">Rs. {{ number_format($payroll->net_salary, 2) }}</span></td>
+              <td><span class="fw-bold {{ $payroll->net_salary < 0 ? 'text-danger' : '' }}">{{ $payroll->formatted_net_salary }}</span></td>
               <td><span class="badge badge-secondary">{{ ucfirst($payroll->status) }}</span></td>
               <td>{{ $payroll->deleted_at ? $payroll->deleted_at->format('d M, Y H:i') : '—' }}</td>
               <td class="actions text-end">
@@ -146,7 +146,9 @@
             </li>
           @endforeach
           <li class="page-item {{ $payrolls->hasMorePages() ? '' : 'disabled' }}">
-            <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+            <a class="page-link" href="{{ $payrolls->nextPageUrl() ?: '#' }}">
+              <i data-lucide="chevron-right" style="width:1rem;height:1rem;"></i>
+            </a>
           </li>
         </ul>
       @endif

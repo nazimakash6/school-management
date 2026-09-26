@@ -259,5 +259,9 @@ class AdmissionSeeder extends Seeder
         if (Admission::count() < 50) {
             Admission::factory()->count(100)->create();
         }
+
+        Admission::all()->each(function ($adm) {
+            $adm->save();
+        });
     }
 }

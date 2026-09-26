@@ -32,12 +32,33 @@
         @csrf
         @method('PUT')
 
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <label for="academic_session_id" class="form-label fw-semibold">Academic Session <span class="text-danger">*</span></label>
+          <select name="academic_session_id" id="academic_session_id" class="form-select @error('academic_session_id') is-invalid @enderror" required>
+            <option value="">-- Select Academic Session --</option>
+            @foreach($academicSessions as $session)
+              <option value="{{ $session->id }}" @selected(old('academic_session_id', $invoice->academic_session_id ?: ($invoice->admission ? $invoice->admission->academic_session_id : '')) == $session->id)>
+                {{ $session->session_name }}
+              </option>
+            @endforeach
+          </select>
+          @error('academic_session_id')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
+
+        <div class="col-md-5">
           <label for="admission_id" class="form-label fw-semibold">Select Student <span class="text-danger">*</span></label>
           <select name="admission_id" id="admission_id" class="form-select @error('admission_id') is-invalid @enderror" required>
             @foreach($students as $st)
-              <option value="{{ $st->id }}" @selected(old('admission_id', $invoice->admission_id) == $st->id)>
-                {{ $st->first_name }} {{ $st->last_name }} ({{ $st->admission_no }} | Class: {{ $st->class_name }})
+              <option value="{{ $st->id }}" 
+                      data-class="{{ $st->class_name }}"
+                      data-section="{{ $st->section_name }}"
+                      data-father="{{ $st->father_name ?: $st->guardian_name }}"
+                      data-no="{{ $st->admission_no }}"
+                      data-session="{{ $st->academic_session_id }}"
+                      @selected(old('admission_id', $invoice->admission_id) == $st->id)>
+                {{ $st->first_name }} {{ $st->last_name }} (ID: {{ $st->admission_no }} | Class: {{ $st->class_name }})
               </option>
             @endforeach
           </select>
@@ -46,7 +67,7 @@
           @enderror
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label for="fee_month" class="form-label fw-semibold">Fee Month <span class="text-danger">*</span></label>
           <input type="month" name="fee_month" id="fee_month" class="form-control @error('fee_month') is-invalid @enderror" value="{{ old('fee_month', $invoice->fee_month) }}" required>
           @error('fee_month')
@@ -153,4 +174,33 @@
       </form>
     </div>
   </div>
+
+@push('styles')
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <style>
+    .select2-container--bootstrap-5 .select2-selection {
+      border-color: #dee2e6;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.375rem;
+      min-height: 38px;
+    }
+  </style>
+@endpush
+
+@push('scripts')
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#admission_id').select2({
+        theme: 'bootstrap-5',
+        placeholder: '-- Search & Select Student --',
+        allowClear: true,
+        width: '100%'
+      });
+    });
+  </script>
+@endpush
 @endsection

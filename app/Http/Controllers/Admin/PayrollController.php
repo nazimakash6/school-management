@@ -94,6 +94,87 @@ class PayrollController extends Controller
         return view('pages.admin.payroll.create', compact('staffMembers'));
     }
 
+    public function getStaffDetails(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $staffId   = (int) $request->integer('staff_id');
+        $month     = trim((string) $request->string('month'));
+        $payrollId = (int) $request->integer('payroll_id', 0);
+
+        if (!$staffId) {
+            return response()->json(['success' => false, 'message' => 'Staff ID is required']);
+        }
+
+        $staff = Staff::find($staffId);
+
+        if (!$staff) {
+            return response()->json(['success' => false, 'message' => 'Staff member not found']);
+        }
+
+        $existingPayroll = null;
+        if (!empty($month)) {
+            $existingQuery = Payroll::where('staff_id', $staffId)
+                ->where('payroll_month', $month);
+            if ($payrollId > 0) {
+                $existingQuery->where('id', '!=', $payrollId);
+            }
+            $existingPayroll = $existingQuery->first();
+        }
+
+        $unpaidAdvances = \App\Models\StaffAdvance::where('staff_id', $staffId)
+            ->whereIn('status', ['approved', 'pending'])
+            ->get()
+            ->filter(function ($adv) {
+                return (float) $adv->advance_amount - (float) $adv->repaid_amount > 0;
+            })
+            ->values();
+
+        $totalUnpaidAdvance = $unpaidAdvances->sum(function ($adv) {
+            return max(0, (float) $adv->advance_amount - (float) $adv->repaid_amount);
+        });
+
+        $formattedAdvances = $unpaidAdvances->map(function ($adv) {
+            $balance = max(0, (float) $adv->advance_amount - (float) $adv->repaid_amount);
+            return [
+                'id'             => $adv->id,
+                'voucher_no'     => 'ADV-' . str_pad($adv->id, 5, '0', STR_PAD_LEFT),
+                'advance_date'   => $adv->advance_date ? $adv->advance_date->format('d M, Y') : 'N/A',
+                'reason'         => $adv->reason ?? 'Personal Loan / Advance',
+                'advance_amount' => (float) $adv->advance_amount,
+                'repaid_amount'  => (float) $adv->repaid_amount,
+                'unpaid_balance' => $balance,
+                'status'         => is_object($adv->status) ? $adv->status->value : $adv->status,
+            ];
+        });
+
+        $suggestedDeduction = min($totalUnpaidAdvance, (float)($staff->salary ?? 0));
+
+        return response()->json([
+            'success'              => true,
+            'staff'                => [
+                'id'                => $staff->id,
+                'full_name'         => $staff->full_name,
+                'staff_code'        => $staff->staff_id ? 'STF-' . $staff->staff_id : 'STF-' . $staff->id,
+                'salary'            => (float) ($staff->salary ?? 0),
+                'department'        => $staff->formatted_department,
+                'designation'       => $staff->formatted_designation,
+                'bank_name'         => $staff->bank_name ?? 'N/A',
+                'account_number'    => $staff->bank_account_number ?? 'N/A',
+                'mobile_no'         => $staff->mobile_no ?? 'N/A',
+            ],
+            'existing_payroll'     => $existingPayroll ? [
+                'id'            => $existingPayroll->id,
+                'payroll_month' => $existingPayroll->payroll_month,
+                'status'        => strtoupper($existingPayroll->status),
+                'net_salary'    => (float) $existingPayroll->net_salary,
+                'formatted_net' => $existingPayroll->formatted_net_salary,
+                'view_url'      => route('payroll.show', $existingPayroll->id),
+            ] : null,
+            'unpaid_advances'      => $formattedAdvances,
+            'total_unpaid_advance' => $totalUnpaidAdvance,
+            'suggested_deduction'  => $suggestedDeduction,
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -599,24 +680,46 @@ class PayrollController extends Controller
 
     protected function processAdvanceRepaymentOnPayrollPaid(Payroll $payroll): void
     {
-        if ($payroll->status !== 'paid' || (float) $payroll->deduction <= 0) {
+        if ($payroll->status === 'cancelled' || (float) $payroll->deduction <= 0) {
             return;
         }
 
+        // Avoid creating duplicate repayments for the same payroll
+        $alreadyProcessed = \App\Models\StaffAdvanceRepayment::where('payroll_id', $payroll->id)->exists();
+        if ($alreadyProcessed) {
+            return;
+        }
+
+        $deduction = (float) $payroll->deduction;
+
+        // 1. Create a single repayment transaction for the staff member with full deduction amount
+        \App\Models\StaffAdvanceRepayment::create([
+            'staff_advance_id' => null,
+            'staff_id'         => $payroll->staff_id,
+            'payroll_id'       => $payroll->id,
+            'amount'           => $deduction,
+            'repayment_date'   => $payroll->payment_date ? $payroll->payment_date->format('Y-m-d') : date('Y-m-d'),
+            'repayment_type'   => 'payroll_deduction',
+            'notes'            => 'Auto-deducted from payroll for month ' . $payroll->payroll_month,
+        ]);
+
+        // 2. Update individual advance balances in FIFO order
         $advances = \App\Models\StaffAdvance::where('staff_id', $payroll->staff_id)
-            ->whereIn('status', ['approved'])
+            ->whereIn('status', ['approved', 'pending'])
+            ->orderBy('id', 'asc')
             ->get();
 
-        $remainingDeduction = (float) $payroll->deduction;
+        $remainingDeduction = $deduction;
         foreach ($advances as $advance) {
             if ($remainingDeduction <= 0) {
                 break;
             }
-            $maxRepay = min($remainingDeduction, $advance->remaining_balance);
+            $unpaidBalance = max(0, (float) $advance->advance_amount - (float) $advance->repaid_amount);
+            $maxRepay = min($remainingDeduction, $unpaidBalance);
             if ($maxRepay > 0) {
-                $advance->repaid_amount += $maxRepay;
-                if ($advance->repaid_amount >= $advance->advance_amount) {
-                    $advance->status = 'fully_repaid';
+                $advance->repaid_amount = (float) $advance->repaid_amount + $maxRepay;
+                if ((float) $advance->repaid_amount >= (float) $advance->advance_amount) {
+                    $advance->status = \App\Enum\StaffAdvanceStatusEnum::FULLY_REPAID;
                 }
                 $advance->save();
                 $remainingDeduction -= $maxRepay;

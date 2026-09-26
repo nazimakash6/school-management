@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicSession;
 use App\Models\Admission;
 use App\Models\FeeManagement;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +21,7 @@ class FeeManagementController extends Controller
         $feeType = trim((string) $request->string('fee_type', 'all'));
         $className = trim((string) $request->string('class_name', 'all'));
 
-        $query = FeeManagement::with('admission')->latest();
+        $query = FeeManagement::with(['admission', 'academicSession'])->latest();
 
         if ($search !== '') {
             $query->where(function (Builder $q) use ($search) {
@@ -88,26 +89,28 @@ class FeeManagementController extends Controller
 
     public function create(Request $request): View
     {
-        $students = Admission::orderBy('first_name')->get();
+        $students = Admission::with('academicSession')->orderBy('first_name')->get();
+        $academicSessions = AcademicSession::orderBy('start_date', 'desc')->get();
         $selectedAdmissionId = $request->get('admission_id');
 
-        return view('pages.admin.fee-management.create', compact('students', 'selectedAdmissionId'));
+        return view('pages.admin.fee-management.create', compact('students', 'academicSessions', 'selectedAdmissionId'));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'admission_id'   => ['required', 'exists:admissions,id'],
-            'fee_type'       => ['required', 'string', 'max:50'],
-            'fee_month'      => ['required', 'string', 'max:20'],
-            'amount'         => ['required', 'numeric', 'min:0'],
-            'discount'       => ['nullable', 'numeric', 'min:0'],
-            'paid_amount'    => ['nullable', 'numeric', 'min:0'],
-            'due_date'       => ['required', 'date'],
-            'payment_date'   => ['nullable', 'date'],
-            'payment_method' => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
-            'status'         => ['required', 'string', 'in:unpaid,partial,paid,cancelled'],
-            'notes'          => ['nullable', 'string'],
+            'admission_id'        => ['required', 'exists:admissions,id'],
+            'academic_session_id' => ['nullable', 'exists:academic_sessions,id'],
+            'fee_type'            => ['required', 'string', 'max:50'],
+            'fee_month'           => ['required', 'string', 'max:20'],
+            'amount'              => ['required', 'numeric', 'min:0'],
+            'discount'            => ['nullable', 'numeric', 'min:0'],
+            'paid_amount'         => ['nullable', 'numeric', 'min:0'],
+            'due_date'            => ['required', 'date'],
+            'payment_date'        => ['nullable', 'date'],
+            'payment_method'      => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
+            'status'              => ['required', 'string', 'in:unpaid,partial,paid,cancelled'],
+            'notes'               => ['nullable', 'string'],
         ]);
 
         $validated['discount'] = $validated['discount'] ?? 0;
@@ -126,17 +129,18 @@ class FeeManagementController extends Controller
 
     public function show($id): View
     {
-        $invoice = FeeManagement::with('admission')->findOrFail($id);
+        $invoice = FeeManagement::with(['admission', 'academicSession'])->findOrFail($id);
 
         return view('pages.admin.fee-management.show', compact('invoice'));
     }
 
     public function edit($id): View
     {
-        $invoice = FeeManagement::with('admission')->findOrFail($id);
-        $students = Admission::orderBy('first_name')->get();
+        $invoice = FeeManagement::with(['admission', 'academicSession'])->findOrFail($id);
+        $students = Admission::with('academicSession')->orderBy('first_name')->get();
+        $academicSessions = AcademicSession::orderBy('start_date', 'desc')->get();
 
-        return view('pages.admin.fee-management.edit', compact('invoice', 'students'));
+        return view('pages.admin.fee-management.edit', compact('invoice', 'students', 'academicSessions'));
     }
 
     public function update(Request $request, $id): RedirectResponse
@@ -144,17 +148,18 @@ class FeeManagementController extends Controller
         $invoice = FeeManagement::findOrFail($id);
 
         $validated = $request->validate([
-            'admission_id'   => ['required', 'exists:admissions,id'],
-            'fee_type'       => ['required', 'string', 'max:50'],
-            'fee_month'      => ['required', 'string', 'max:20'],
-            'amount'         => ['required', 'numeric', 'min:0'],
-            'discount'       => ['nullable', 'numeric', 'min:0'],
-            'paid_amount'    => ['nullable', 'numeric', 'min:0'],
-            'due_date'       => ['required', 'date'],
-            'payment_date'   => ['nullable', 'date'],
-            'payment_method' => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
-            'status'         => ['required', 'string', 'in:unpaid,partial,paid,cancelled'],
-            'notes'          => ['nullable', 'string'],
+            'admission_id'        => ['required', 'exists:admissions,id'],
+            'academic_session_id' => ['nullable', 'exists:academic_sessions,id'],
+            'fee_type'            => ['required', 'string', 'max:50'],
+            'fee_month'           => ['required', 'string', 'max:20'],
+            'amount'              => ['required', 'numeric', 'min:0'],
+            'discount'            => ['nullable', 'numeric', 'min:0'],
+            'paid_amount'         => ['nullable', 'numeric', 'min:0'],
+            'due_date'            => ['required', 'date'],
+            'payment_date'        => ['nullable', 'date'],
+            'payment_method'      => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
+            'status'              => ['required', 'string', 'in:unpaid,partial,paid,cancelled'],
+            'notes'               => ['nullable', 'string'],
         ]);
 
         $validated['discount'] = $validated['discount'] ?? 0;

@@ -19,24 +19,30 @@
 
             const monthlyDiv = document.getElementById('monthlyFeeDiv');
             const quarterlyDiv = document.getElementById('quarterlyFeeDiv');
+            const sixMonthlyDiv = document.getElementById('sixMonthlyFeeDiv');
             const annualDiv = document.getElementById('annualFeeDiv');
 
             function toggleFeeFields() {
-                monthlyDiv.classList.add('d-none');
-                quarterlyDiv.classList.add('d-none');
-                annualDiv.classList.add('d-none');
+                if (monthlyDiv) monthlyDiv.classList.add('d-none');
+                if (quarterlyDiv) quarterlyDiv.classList.add('d-none');
+                if (sixMonthlyDiv) sixMonthlyDiv.classList.add('d-none');
+                if (annualDiv) annualDiv.classList.add('d-none');
 
                 switch (feePlan.value) {
                     case 'Monthly':
-                        monthlyDiv.classList.remove('d-none');
+                        if (monthlyDiv) monthlyDiv.classList.remove('d-none');
                         break;
-
                     case 'Quarterly':
-                        quarterlyDiv.classList.remove('d-none');
+                        if (quarterlyDiv) quarterlyDiv.classList.remove('d-none');
                         break;
-
+                    case 'Six-Monthly':
+                    case 'Bi-Annual':
+                    case 'Half-Yearly':
+                    case '6 Months':
+                        if (sixMonthlyDiv) sixMonthlyDiv.classList.remove('d-none');
+                        break;
                     case 'Annual':
-                        annualDiv.classList.remove('d-none');
+                        if (annualDiv) annualDiv.classList.remove('d-none');
                         break;
                 }
                 calculateTotalFee();
@@ -46,6 +52,7 @@
                 const planVal = feePlan ? feePlan.value : '';
                 const monthlyFee = parseFloat(document.querySelector('[name="monthly_fee"]')?.value || 0);
                 const quarterlyFee = parseFloat(document.querySelector('[name="quarterly_fee"]')?.value || 0);
+                const sixMonthlyFee = parseFloat(document.querySelector('[name="six_monthly_fee"]')?.value || 0);
                 const annualFee = parseFloat(document.querySelector('[name="annual_fee"]')?.value || 0);
                 const regFee = parseFloat(document.querySelector('[name="registration_fee"]')?.value || 0);
                 const discount = parseFloat(document.querySelector('[name="scholarship_discount"]')?.value || 0);
@@ -53,8 +60,9 @@
                 let baseFee = 0;
                 if (planVal === 'Monthly') baseFee = monthlyFee;
                 else if (planVal === 'Quarterly') baseFee = quarterlyFee;
+                else if (planVal === 'Six-Monthly' || planVal === 'Bi-Annual' || planVal === 'Half-Yearly' || planVal === '6 Months') baseFee = sixMonthlyFee;
                 else if (planVal === 'Annual') baseFee = annualFee;
-                else baseFee = monthlyFee || quarterlyFee || annualFee || 0;
+                else baseFee = monthlyFee || quarterlyFee || sixMonthlyFee || annualFee || 0;
 
                 const netFee = Math.max(0, (baseFee + regFee) - discount);
 
@@ -746,6 +754,9 @@
                                     <option value="Quarterly" {{ old('fee_plan') == 'Quarterly' ? 'selected' : '' }}>
                                         Quarterly
                                     </option>
+                                    <option value="Six-Monthly" {{ old('fee_plan') == 'Six-Monthly' ? 'selected' : '' }}>
+                                        Six Monthly (6 Months)
+                                    </option>
                                     <option value="Annual" {{ old('fee_plan') == 'Annual' ? 'selected' : '' }}>
                                         Annual
                                     </option>
@@ -770,6 +781,17 @@
                                     class="form-control"
                                     name="quarterly_fee"
                                     value="{{ old('quarterly_fee') }}"
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div class="col-md-4 d-none" id="sixMonthlyFeeDiv">
+                                <label class="form-label">Six Monthly Fee</label>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    name="six_monthly_fee"
+                                    value="{{ old('six_monthly_fee') }}"
                                     placeholder="0"
                                 />
                             </div>

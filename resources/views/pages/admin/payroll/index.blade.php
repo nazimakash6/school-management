@@ -158,77 +158,79 @@
         <button type="submit" class="btn btn-secondary btn-sm">Apply to Selected</button>
       </form>
 
-      <table class="table align-middle">
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="selectAllPayrolls"></th>
-            <th>Staff Details</th>
-            <th>Month</th>
-            <th>Basic Salary</th>
-            <th>Allowances</th>
-            <th>Deductions</th>
-            <th>Net Salary</th>
-            <th>Status</th>
-            <th>Payment Date</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse ($payrolls as $payroll)
+      <div class="table-container">
+        <table class="table align-middle">
+          <thead>
             <tr>
-              <td>
-                <input type="checkbox" name="selected_ids[]" value="{{ $payroll->id }}"
-                  class="payroll-row-checkbox" form="payrollBulkActionForm">
-              </td>
-              <td>
-                @if ($payroll->staff)
-                  <div class="fw-bold">{{ $payroll->staff->full_name }}</div>
-                  <div class="text-xs text-tertiary">
-                    ID: {{ $payroll->staff->staff_id }} • {{ $payroll->staff->formatted_department }}
-                  </div>
-                @else
-                  <span class="text-muted">Unknown Staff</span>
-                @endif
-              </td>
-              <td><span class="badge bg-light text-dark font-monospace">{{ $payroll->payroll_month }}</span></td>
-              <td>Rs. {{ number_format($payroll->basic_salary, 2) }}</td>
-              <td class="text-success">+ Rs. {{ number_format($payroll->allowance, 2) }}</td>
-              <td class="text-danger">- Rs. {{ number_format($payroll->deduction, 2) }}</td>
-              <td><span class="fw-bold {{ $payroll->net_salary < 0 ? 'text-danger' : 'text-primary' }}">{{ $payroll->formatted_net_salary }}</span></td>
-              <td>
-                @if ($payroll->status === 'paid')
-                  <span class="badge badge-success">Paid</span>
-                @elseif ($payroll->status === 'pending')
-                  <span class="badge badge-warning">Pending</span>
-                @else
-                  <span class="badge badge-danger">Cancelled</span>
-                @endif
-              </td>
-              <td>{{ $payroll->payment_date ? $payroll->payment_date->format('d M, Y') : '—' }}</td>
-              <td class="actions text-end">
-                <a href="{{ route('payroll.show', $payroll) }}" class="btn btn-ghost btn-icon-sm" title="View Payslip">
-                  <i data-lucide="eye" style="width:0.875rem;height:0.875rem;"></i>
-                </a>
-                <a href="{{ route('payroll.edit', $payroll) }}" class="btn btn-ghost btn-icon-sm" title="Edit">
-                  <i data-lucide="pencil" style="width:0.875rem;height:0.875rem;"></i>
-                </a>
-                <form method="POST" action="{{ route('payroll.destroy', $payroll) }}" class="d-inline"
-                  onsubmit="return confirm('Move this payroll entry to trash?');">
-                  @csrf
-                  @method('DELETE')
-                  <button class="btn btn-ghost btn-icon-sm text-danger" type="submit" title="Trash">
-                    <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
-                  </button>
-                </form>
-              </td>
+              <th><input type="checkbox" id="selectAllPayrolls"></th>
+              <th>Staff Details</th>
+              <th>Month</th>
+              <th>Basic Salary</th>
+              <th>Allowances</th>
+              <th>Deductions</th>
+              <th>Net Salary</th>
+              <th>Status</th>
+              <th>Payment Date</th>
+              <th class="text-end">Actions</th>
             </tr>
-          @empty
-            <tr>
-              <td colspan="10" class="text-center text-tertiary py-4">No payroll records found matching your filters.</td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @forelse ($payrolls as $payroll)
+              <tr>
+                <td>
+                  <input type="checkbox" name="selected_ids[]" value="{{ $payroll->id }}"
+                    class="payroll-row-checkbox" form="payrollBulkActionForm">
+                </td>
+                <td>
+                  @if ($payroll->staff)
+                    <div class="fw-bold">{{ $payroll->staff->full_name }}</div>
+                    <div class="text-xs text-tertiary">
+                      ID: {{ $payroll->staff->staff_id }} • {{ $payroll->staff->formatted_department }}
+                    </div>
+                  @else
+                    <span class="text-muted">Unknown Staff</span>
+                  @endif
+                </td>
+                <td><span class="badge bg-light text-dark font-monospace">{{ $payroll->payroll_month }}</span></td>
+                <td>Rs. {{ number_format($payroll->basic_salary, 2) }}</td>
+                <td class="text-success">+ Rs. {{ number_format($payroll->allowance, 2) }}</td>
+                <td class="text-danger">- Rs. {{ number_format($payroll->deduction, 2) }}</td>
+                <td><span class="fw-bold {{ $payroll->net_salary < 0 ? 'text-danger' : 'text-primary' }}">{{ $payroll->formatted_net_salary }}</span></td>
+                <td>
+                  @if ($payroll->status === 'paid')
+                    <span class="badge badge-success">Paid</span>
+                  @elseif ($payroll->status === 'pending')
+                    <span class="badge badge-warning">Pending</span>
+                  @else
+                    <span class="badge badge-danger">Cancelled</span>
+                  @endif
+                </td>
+                <td>{{ $payroll->payment_date ? $payroll->payment_date->format('d M, Y') : '—' }}</td>
+                <td class="actions text-end">
+                  <a href="{{ route('payroll.show', $payroll) }}" class="btn btn-ghost btn-icon-sm" title="View Payslip">
+                    <i data-lucide="eye" style="width:0.875rem;height:0.875rem;"></i>
+                  </a>
+                  <a href="{{ route('payroll.edit', $payroll) }}" class="btn btn-ghost btn-icon-sm" title="Edit">
+                    <i data-lucide="pencil" style="width:0.875rem;height:0.875rem;"></i>
+                  </a>
+                  <form method="POST" action="{{ route('payroll.destroy', $payroll) }}" class="d-inline"
+                    onsubmit="return confirm('Move this payroll entry to trash?');">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn btn-ghost btn-icon-sm text-danger" type="submit" title="Trash">
+                      <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="10" class="text-center text-tertiary py-4">No payroll records found matching your filters.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Pagination -->

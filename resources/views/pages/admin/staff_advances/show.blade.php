@@ -176,7 +176,7 @@
           @if($advance->remaining_balance > 0)
             <div class="mt-4 pt-3 border-top text-end">
               <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#repayModalShow">
-                <i data-lucide="banknote" style="width:1rem;height:1rem;" class="me-1"></i> Record Repayment
+                <i data-lucide="banknote" style="width:1rem;height:1rem;" class="me-1"></i> Record Repayment Entry
               </button>
             </div>
 
@@ -187,25 +187,118 @@
                   <form action="{{ route('staff-advances.repayment', $advance->id) }}" method="POST">
                     @csrf
                     <div class="modal-header">
-                      <h5 class="modal-title fs-6 fw-bold">Record Repayment</h5>
+                      <h5 class="modal-title fs-6 fw-bold">Record Advance Repayment Entry</h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                      <div class="mb-3 p-2.5 bg-light rounded border" style="font-size: 0.85rem;">
+                        <div class="d-flex justify-content-between text-muted">
+                          <span>Total Sanctioned Advance:</span>
+                          <span class="fw-bold text-dark">Rs. {{ number_format($advance->advance_amount, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted">
+                          <span>Already Repaid:</span>
+                          <span class="fw-bold text-success">Rs. {{ number_format($advance->repaid_amount, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-1 mt-1">
+                          <span class="fw-bold">Current Unpaid Balance:</span>
+                          <span class="fw-bold text-danger">Rs. {{ number_format($advance->remaining_balance, 2) }}</span>
+                        </div>
+                      </div>
+
                       <div class="mb-3">
-                        <label class="form-label fw-medium">Repayment Amount (Rs.)</label>
+                        <label class="form-label fw-semibold">Repayment Amount (Rs.) <span class="text-danger">*</span></label>
                         <input type="number" step="0.01" min="1" max="{{ $advance->remaining_balance }}" name="repayment_amount" class="form-control" value="{{ $advance->remaining_balance }}" required>
-                        <small class="text-muted">Maximum remaining balance: Rs. {{ number_format($advance->remaining_balance, 2) }}</small>
+                      </div>
+
+                      <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Repayment Date <span class="text-danger">*</span></label>
+                          <input type="date" name="repayment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                          <select name="payment_method" class="form-select" required>
+                            <option value="cash">Cash</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cheque">Cheque</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="mb-2">
+                        <label class="form-label fw-semibold">Notes / Remarks</label>
+                        <input type="text" name="notes" class="form-control" placeholder="e.g. Cash repayment received from staff">
                       </div>
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                      <button type="submit" class="btn btn-success btn-sm">Save Repayment</button>
+                      <button type="submit" class="btn btn-success btn-sm">Save Repayment Entry</button>
                     </div>
                   </form>
                 </div>
               </div>
             </div>
           @endif
+        </div>
+      </div>
+
+      <!-- Separate Repayment Transactions Card for Staff -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+            <i data-lucide="receipt" class="text-success" style="width:1.1rem;height:1.1rem;"></i>
+            Repayment Transactions Ledger ({{ $advance->staff ? $advance->staff->full_name : 'Staff' }})
+          </h6>
+          <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1">
+            {{ $staffRepayments->count() }} Repayment Entry(s)
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-3">Date</th>
+                  <th>Type / Source</th>
+                  <th class="text-end">Repayment Amount</th>
+                  <th class="pe-3">Remarks / Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($staffRepayments as $repay)
+                  <tr>
+                    <td class="ps-3 fw-semibold text-dark">
+                      {{ $repay->repayment_date ? $repay->repayment_date->format('M d, Y') : 'N/A' }}
+                    </td>
+                    <td>
+                      @if($repay->repayment_type === 'payroll_deduction')
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                          🏦 Payroll Deduction @if($repay->payroll) ({{ $repay->payroll->payroll_month }}) @endif
+                        </span>
+                      @else
+                        <span class="badge bg-success-subtle text-success border border-success-subtle text-capitalize">
+                          💵 {{ str_replace('_', ' ', $repay->repayment_type) }}
+                        </span>
+                      @endif
+                    </td>
+                    <td class="text-end fw-bold text-success">
+                      Rs. {{ number_format($repay->amount, 2) }}
+                    </td>
+                    <td class="text-muted small pe-3">
+                      {{ $repay->notes ?? 'N/A' }}
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      No repayment entries recorded yet for this staff member.
+                    </td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -278,8 +371,10 @@
   <style>
     .custom-scroll-container {
       max-height: 380px;
-      overflow-x: auto;
-      overflow-y: auto;
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      scrollbar-width: thin;
+      scrollbar-color: #475569 #e2e8f0;
     }
     .custom-scroll-container thead th {
       position: sticky;
@@ -288,21 +383,37 @@
       z-index: 2;
       box-shadow: inset 0 -1px 0 #dee2e6;
     }
-    .custom-scroll-container::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    .custom-scroll-container::-webkit-scrollbar,
+    .table-responsive::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
     }
-    .custom-scroll-container::-webkit-scrollbar-track {
+    .custom-scroll-container::-webkit-scrollbar-track,
+    .table-responsive::-webkit-scrollbar-track {
       background: #f1f5f9;
       border-radius: 4px;
     }
-    .custom-scroll-container::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+    .custom-scroll-container::-webkit-scrollbar-thumb,
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: #94a3b8;
       border-radius: 4px;
     }
-    .custom-scroll-container::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+    .custom-scroll-container::-webkit-scrollbar-thumb:hover,
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
     }
   </style>
+@endpush
+
+@push('scripts')
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        lucide.createIcons(lucide.icons ? { icons: lucide.icons } : undefined);
+      } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons(window.lucide.icons ? { icons: window.lucide.icons } : undefined);
+      }
+    });
+  </script>
 @endpush
 @endsection

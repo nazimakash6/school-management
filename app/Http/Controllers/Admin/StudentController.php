@@ -206,6 +206,7 @@ class StudentController extends Controller
             'roll_no' => ['nullable', 'string', 'max:50'],
             'class_shift' => ['nullable', 'string', 'max:100'],
             'admission_type' => ['nullable', 'string', 'max:100'],
+            'class_fee' => ['nullable', 'numeric', 'min:0'],
 
             'academic_notes' => ['nullable', 'string'],
 

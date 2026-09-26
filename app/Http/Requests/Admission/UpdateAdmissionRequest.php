@@ -106,6 +106,7 @@ class UpdateAdmissionRequest extends FormRequest
             'registration_fee' => ['nullable', 'numeric', 'min:0'],
             'monthly_fee' => ['nullable', 'numeric', 'min:0'],
             'quarterly_fee' => ['nullable', 'numeric', 'min:0'],
+            'six_monthly_fee' => ['nullable', 'numeric', 'min:0'],
             'annual_fee' => ['nullable', 'numeric', 'min:0'],
             'scholarship_discount' => ['nullable', 'max:255'],
             'academic_notes' => ['nullable', 'string'],

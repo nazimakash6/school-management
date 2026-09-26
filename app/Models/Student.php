@@ -19,6 +19,7 @@ class Student extends Model
         'admission_date' => 'date',
         'date_of_birth'  => 'date',
         'is_confirmed'   => 'boolean',
+        'class_fee'      => 'decimal:2',
     ];
 
     public function studentClass(): BelongsTo

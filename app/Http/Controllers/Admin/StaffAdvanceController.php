@@ -13,11 +13,15 @@ class StaffAdvanceController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = StaffAdvance::with('staff');
+        $activeTab = $request->get('tab', 'advances');
+        $search = $request->get('search');
+        $status = $request->get('status');
+
+        // Tab 1: Advances Query
+        $advancesQuery = StaffAdvance::with('staff');
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('staff', function ($q) use ($search) {
+            $advancesQuery->whereHas('staff', function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('staff_id', 'like', "%{$search}%");
@@ -25,10 +29,23 @@ class StaffAdvanceController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $advancesQuery->where('status', $status);
         }
 
-        $advances = $query->orderBy('advance_date', 'desc')->paginate(15)->withQueryString();
+        $advances = $advancesQuery->orderBy('advance_date', 'desc')->paginate(15)->withQueryString();
+
+        // Tab 2: Repayments Query
+        $repaymentsQuery = \App\Models\StaffAdvanceRepayment::with(['staff', 'payroll']);
+
+        if ($request->filled('search')) {
+            $repaymentsQuery->whereHas('staff', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('staff_id', 'like', "%{$search}%");
+            });
+        }
+
+        $repayments = $repaymentsQuery->orderBy('repayment_date', 'desc')->orderBy('id', 'desc')->paginate(15, ['*'], 'repayments_page')->withQueryString();
 
         $allAdvances = StaffAdvance::all();
         $totalAdvanced = $allAdvances->sum('advance_amount');
@@ -40,6 +57,8 @@ class StaffAdvanceController extends Controller
 
         return view('pages.admin.staff_advances.index', compact(
             'advances',
+            'repayments',
+            'activeTab',
             'totalAdvanced',
             'totalRepaid',
             'outstandingBalance',
@@ -78,10 +97,16 @@ class StaffAdvanceController extends Controller
 
     public function show($id): View
     {
-        $advance = StaffAdvance::with('staff')->findOrFail($id);
+        $advance = StaffAdvance::with(['staff'])->findOrFail($id);
 
         $staffAdvances = StaffAdvance::where('staff_id', $advance->staff_id)
             ->orderBy('advance_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $staffRepayments = \App\Models\StaffAdvanceRepayment::with('payroll')
+            ->where('staff_id', $advance->staff_id)
+            ->orderBy('repayment_date', 'desc')
             ->orderBy('id', 'desc')
             ->get();
 
@@ -92,6 +117,7 @@ class StaffAdvanceController extends Controller
         return view('pages.admin.staff_advances.show', compact(
             'advance',
             'staffAdvances',
+            'staffRepayments',
             'overallTotal',
             'overallRepaid',
             'overallPending'
@@ -101,7 +127,7 @@ class StaffAdvanceController extends Controller
     public function edit($id): View
     {
         $advance = StaffAdvance::findOrFail($id);
-        $staffList = Staff::orderBy('first_name')->get();
+        $staffList = Staff::with('advances')->orderBy('first_name')->get();
         return view('pages.admin.staff_advances.edit', compact('advance', 'staffList'));
     }
 
@@ -112,7 +138,6 @@ class StaffAdvanceController extends Controller
         $validated = $request->validate([
             'staff_id'            => 'required|exists:staff,id',
             'advance_amount'      => 'required|numeric|min:1',
-            'repaid_amount'       => 'required|numeric|min:0|max:' . $request->advance_amount,
             'advance_date'        => 'required|date',
             'payment_method'      => 'required|string|in:cash,bank_transfer,cheque',
             'status'              => 'required|in:pending,approved,fully_repaid,rejected,cancelled',
@@ -129,30 +154,72 @@ class StaffAdvanceController extends Controller
     public function recordRepayment(Request $request, $id): RedirectResponse
     {
         $advance = StaffAdvance::findOrFail($id);
+        $staffId = $advance->staff_id;
 
-        $maxRepayable = max(0, (float) $advance->advance_amount - (float) $advance->repaid_amount);
+        $unpaidAdvances = StaffAdvance::where('staff_id', $staffId)
+            ->whereIn('status', ['approved', 'pending'])
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalUnpaidBalance = $unpaidAdvances->sum(function ($adv) {
+            return max(0, (float) $adv->advance_amount - (float) $adv->repaid_amount);
+        });
 
         $validated = $request->validate([
-            'repayment_amount' => 'required|numeric|min:0.01|max:' . $maxRepayable,
+            'repayment_amount' => 'required|numeric|min:0.01|max:' . max(0.01, $totalUnpaidBalance),
+            'repayment_date'   => 'nullable|date',
+            'payment_method'   => 'nullable|string|in:cash,bank_transfer,cheque',
+            'notes'            => 'nullable|string',
         ]);
 
-        $newRepaid = (float) $advance->repaid_amount + (float) $validated['repayment_amount'];
-        $advance->repaid_amount = $newRepaid;
+        $repayAmount = (float) $validated['repayment_amount'];
+        $repayDate   = $validated['repayment_date'] ?? date('Y-m-d');
+        $repayType   = $validated['payment_method'] ?? 'cash';
+        $notes       = $validated['notes'] ?? 'Manual repayment recorded';
 
-        if ($advance->repaid_amount >= (float) $advance->advance_amount) {
-            $advance->status = \App\Enum\StaffAdvanceStatusEnum::FULLY_REPAID;
+        // 1. Create a single repayment transaction for staff
+        \App\Models\StaffAdvanceRepayment::create([
+            'staff_advance_id' => null,
+            'staff_id'         => $staffId,
+            'payroll_id'       => null,
+            'amount'           => $repayAmount,
+            'repayment_date'   => $repayDate,
+            'repayment_type'   => $repayType,
+            'notes'            => $notes,
+        ]);
+
+        // 2. Adjust individual advance balances in FIFO order
+        $remainingRepay = $repayAmount;
+        foreach ($unpaidAdvances as $adv) {
+            if ($remainingRepay <= 0) {
+                break;
+            }
+            $unpaidBalance = max(0, (float) $adv->advance_amount - (float) $adv->repaid_amount);
+            $payForThis = min($remainingRepay, $unpaidBalance);
+            if ($payForThis > 0) {
+                $adv->repaid_amount = (float) $adv->repaid_amount + $payForThis;
+                if ((float) $adv->repaid_amount >= (float) $adv->advance_amount) {
+                    $adv->status = \App\Enum\StaffAdvanceStatusEnum::FULLY_REPAID;
+                }
+                $adv->save();
+                $remainingRepay -= $payForThis;
+            }
         }
 
-        $advance->save();
-
         return redirect()->back()
-            ->with('success', 'Repayment of Rs. ' . number_format($validated['repayment_amount'], 2) . ' recorded successfully.');
+            ->with('success', 'Separate repayment transaction of Rs. ' . number_format($repayAmount, 2) . ' recorded successfully.');
     }
 
     public function print($id): View
     {
-        $advance    = StaffAdvance::with('staff')->findOrFail($id);
+        $advance    = StaffAdvance::with(['staff'])->findOrFail($id);
         $schoolInfo = \App\Models\SchoolInfo::first();
+
+        $staffRepayments = \App\Models\StaffAdvanceRepayment::with('payroll')
+            ->where('staff_id', $advance->staff_id)
+            ->orderBy('repayment_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
 
         $previousUnpaidAdvances = StaffAdvance::where('staff_id', $advance->staff_id)
             ->where('id', '!=', $advance->id)
@@ -169,6 +236,7 @@ class StaffAdvanceController extends Controller
         return view('pages.admin.staff_advances.print', compact(
             'advance',
             'schoolInfo',
+            'staffRepayments',
             'previousUnpaidAdvances',
             'previousUnpaidTotalBalance'
         ));

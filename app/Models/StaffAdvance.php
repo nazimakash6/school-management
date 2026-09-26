@@ -38,6 +38,11 @@ class StaffAdvance extends Model
         return $this->belongsTo(Staff::class, 'staff_id');
     }
 
+    public function repayments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StaffAdvanceRepayment::class, 'staff_advance_id')->orderBy('repayment_date', 'desc')->orderBy('id', 'desc');
+    }
+
     public function getRemainingBalanceAttribute(): float
     {
         return max(0, (float) $this->advance_amount - (float) $this->repaid_amount);

@@ -31,18 +31,39 @@
       <form action="{{ route('fee-management.store') }}" method="POST" class="row g-3">
         @csrf
 
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <label for="academic_session_id" class="form-label fw-semibold">Academic Session <span class="text-danger">*</span></label>
+          <select name="academic_session_id" id="academic_session_id" class="form-select @error('academic_session_id') is-invalid @enderror" required>
+            <option value="">-- Select Academic Session --</option>
+            @foreach($academicSessions as $session)
+              @php
+                $sessStatus = is_object($session->status) ? ($session->status->value ?? $session->status->name) : $session->status;
+              @endphp
+              <option value="{{ $session->id }}" @selected(old('academic_session_id', strtolower((string)$sessStatus) === 'active' ? $session->id : '') == $session->id)>
+                {{ $session->session_name }}
+              </option>
+            @endforeach
+          </select>
+          @error('academic_session_id')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
+
+        <div class="col-md-5">
           <label for="admission_id" class="form-label fw-semibold">Select Student <span class="text-danger">*</span></label>
           <select name="admission_id" id="admission_id" class="form-select @error('admission_id') is-invalid @enderror" required>
-            <option value="" data-class="" data-section="" data-father="" data-no="">-- Select Student --</option>
+            <option value="" data-class="" data-section="" data-father="" data-no="" data-session="" data-fee="0">-- Search & Select Student --</option>
             @foreach($students as $st)
               <option value="{{ $st->id }}" 
                       data-class="{{ $st->class_name }}"
                       data-section="{{ $st->section_name }}"
                       data-father="{{ $st->father_name ?: $st->guardian_name }}"
                       data-no="{{ $st->admission_no }}"
+                      data-session="{{ $st->academic_session_id }}"
+                      data-fee="{{ $st->class_fee ?: ($st->monthly_fee ?? 0) }}"
+                      data-reg-fee="{{ $st->registration_fee ?? 0 }}"
                       @selected(old('admission_id', $selectedAdmissionId) == $st->id)>
-                {{ $st->first_name }} {{ $st->last_name }} ({{ $st->admission_no }} | Class: {{ $st->class_name }})
+                {{ $st->first_name }} {{ $st->last_name }} (ID: {{ $st->admission_no }} | Class: {{ $st->class_name }})
               </option>
             @endforeach
           </select>
@@ -51,7 +72,7 @@
           @enderror
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label for="fee_month" class="form-label fw-semibold">Fee Month <span class="text-danger">*</span></label>
           <input type="month" name="fee_month" id="fee_month" class="form-control @error('fee_month') is-invalid @enderror" value="{{ old('fee_month', date('Y-m')) }}" required>
           @error('fee_month')
@@ -89,7 +110,8 @@
         <div class="col-md-6">
           <label for="fee_type" class="form-label fw-semibold">Fee Type <span class="text-danger">*</span></label>
           <select name="fee_type" id="fee_type" class="form-select @error('fee_type') is-invalid @enderror" required>
-            <option value="school_fee" @selected(old('fee_type', 'school_fee') === 'school_fee')>School Fee</option>
+            <option value="" @selected(!old('fee_type'))>-- Select Fee Type --</option>
+            <option value="school_fee" @selected(old('fee_type') === 'school_fee')>School Fee</option>
             <option value="tuition" @selected(old('fee_type') === 'tuition')>Tuition Fee</option>
             <option value="admission" @selected(old('fee_type') === 'admission')>Admission Fee</option>
             <option value="examination" @selected(old('fee_type') === 'examination')>Examination Fee</option>
@@ -112,7 +134,7 @@
 
         <div class="col-md-4">
           <label for="amount" class="form-label fw-semibold">Total Fee Amount (PKR) <span class="text-danger">*</span></label>
-          <input type="number" step="0.01" min="0" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', 0) }}" required>
+          <input type="number" step="0.01" min="0" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', '') }}" placeholder="0.00" required>
           @error('amount')
             <div class="invalid-feedback">{{ $message }}</div>
           @enderror
@@ -197,65 +219,143 @@
     </div>
   </div>
 
-  @push('scripts')
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const studentSelect = document.getElementById('admission_id');
-        const infoBox = document.getElementById('student_info_box');
-        const stAdmNo = document.getElementById('st_adm_no');
-        const stClassSec = document.getElementById('st_class_sec');
-        const stFather = document.getElementById('st_father');
+@push('styles')
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <style>
+    .select2-container--bootstrap-5 .select2-selection {
+      border-color: #dee2e6;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.375rem;
+      min-height: 38px;
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+      border-color: #dee2e6;
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+  </style>
+@endpush
 
-        const amountInput = document.getElementById('amount');
-        const discountInput = document.getElementById('discount');
-        const paidAmountInput = document.getElementById('paid_amount');
-        const statusSelect = document.getElementById('status');
-        const netFeeDisplay = document.getElementById('netFeeDisplay');
+@push('scripts')
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      const $studentSelect = $('#admission_id');
+      const sessionSelect = document.getElementById('academic_session_id');
+      const infoBox = document.getElementById('student_info_box');
+      const stAdmNo = document.getElementById('st_adm_no');
+      const stClassSec = document.getElementById('st_class_sec');
+      const stFather = document.getElementById('st_father');
 
-        function formatMoney(amount) {
-          return 'Rs. ' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const amountInput = document.getElementById('amount');
+      const discountInput = document.getElementById('discount');
+      const paidAmountInput = document.getElementById('paid_amount');
+      const statusSelect = document.getElementById('status');
+      const netFeeDisplay = document.getElementById('netFeeDisplay');
+
+      $studentSelect.select2({
+        theme: 'bootstrap-5',
+        placeholder: '-- Search & Select Student --',
+        allowClear: true,
+        width: '100%'
+      });
+
+      function formatMoney(amount) {
+        return 'Rs. ' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function updateCalculations() {
+        const amt = parseFloat(amountInput.value) || 0;
+        const disc = parseFloat(discountInput.value) || 0;
+        const paid = parseFloat(paidAmountInput.value) || 0;
+        const net = Math.max(0, amt - disc);
+
+        netFeeDisplay.textContent = formatMoney(net);
+
+        // Auto-adjust status dropdown
+        if (paid >= net && net > 0) {
+          statusSelect.value = 'paid';
+        } else if (paid > 0) {
+          statusSelect.value = 'partial';
+        } else {
+          statusSelect.value = 'unpaid';
+        }
+      }
+
+      const feeTypeSelect = document.getElementById('fee_type');
+
+      function syncClassFee() {
+        const studentSelectElem = $studentSelect[0];
+        const currentFeeType = feeTypeSelect ? feeTypeSelect.value : '';
+
+        if (!currentFeeType) {
+          amountInput.value = '';
+          updateCalculations();
+          return;
         }
 
-        function updateCalculations() {
-          const amt = parseFloat(amountInput.value) || 0;
-          const disc = parseFloat(discountInput.value) || 0;
-          const paid = parseFloat(paidAmountInput.value) || 0;
-          const net = Math.max(0, amt - disc);
-
-          netFeeDisplay.textContent = formatMoney(net);
-
-          // Auto-adjust status dropdown
-          if (paid >= net && net > 0) {
-            statusSelect.value = 'paid';
-          } else if (paid > 0) {
-            statusSelect.value = 'partial';
-          } else {
-            statusSelect.value = 'unpaid';
+        let targetFee = 0;
+        if (studentSelectElem && studentSelectElem.selectedIndex >= 0) {
+          const selectedOpt = studentSelectElem.options[studentSelectElem.selectedIndex];
+          if (selectedOpt && studentSelectElem.value) {
+            if (currentFeeType === 'school_fee' || currentFeeType === 'tuition') {
+              targetFee = parseFloat(selectedOpt.getAttribute('data-fee') || 0);
+            } else if (currentFeeType === 'admission') {
+              targetFee = parseFloat(selectedOpt.getAttribute('data-reg-fee') || 0);
+            }
           }
         }
 
-        studentSelect.addEventListener('change', function () {
-          const opt = studentSelect.options[studentSelect.selectedIndex];
-          if (!studentSelect.value) {
-            infoBox.classList.add('d-none');
-            return;
-          }
-
-          infoBox.classList.remove('d-none');
-          stAdmNo.textContent = opt.getAttribute('data-no') || '-';
-          stClassSec.textContent = (opt.getAttribute('data-class') || '-') + (opt.getAttribute('data-section') ? ' (' + opt.getAttribute('data-section') + ')' : '');
-          stFather.textContent = opt.getAttribute('data-father') || '-';
-        });
-
-        amountInput.addEventListener('input', updateCalculations);
-        discountInput.addEventListener('input', updateCalculations);
-        paidAmountInput.addEventListener('input', updateCalculations);
-
-        if (studentSelect.value) {
-          studentSelect.dispatchEvent(new Event('change'));
+        if (targetFee > 0) {
+          amountInput.value = targetFee;
+        } else {
+          amountInput.value = '';
         }
         updateCalculations();
-      });
-    </script>
-  @endpush
+      }
+
+      function handleStudentChange() {
+        const studentSelectElem = $studentSelect[0];
+        if (!studentSelectElem || studentSelectElem.selectedIndex < 0) {
+          infoBox.classList.add('d-none');
+          return;
+        }
+
+        const selectedOpt = studentSelectElem.options[studentSelectElem.selectedIndex];
+        if (!selectedOpt || !studentSelectElem.value) {
+          infoBox.classList.add('d-none');
+          return;
+        }
+
+        infoBox.classList.remove('d-none');
+        stAdmNo.textContent = selectedOpt.getAttribute('data-no') || '-';
+        stClassSec.textContent = (selectedOpt.getAttribute('data-class') || '-') + (selectedOpt.getAttribute('data-section') ? ' (' + selectedOpt.getAttribute('data-section') + ')' : '');
+        stFather.textContent = selectedOpt.getAttribute('data-father') || '-';
+
+        const sessionId = selectedOpt.getAttribute('data-session');
+        if (sessionId && sessionSelect) {
+          sessionSelect.value = sessionId;
+        }
+
+        syncClassFee();
+      }
+
+      $studentSelect.on('change', handleStudentChange);
+      if (feeTypeSelect) {
+        feeTypeSelect.addEventListener('change', syncClassFee);
+      }
+
+      amountInput.addEventListener('input', updateCalculations);
+      discountInput.addEventListener('input', updateCalculations);
+      paidAmountInput.addEventListener('input', updateCalculations);
+
+      if ($studentSelect.val()) {
+        handleStudentChange();
+      }
+      updateCalculations();
+    });
+  </script>
+@endpush
 @endsection

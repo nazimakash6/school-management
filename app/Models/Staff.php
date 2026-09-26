@@ -53,6 +53,13 @@ class Staff extends Model
         'note',
     ];
 
+    protected $casts = [
+        'joining_date' => 'date',
+        'leaving_date' => 'date',
+        'dob' => 'date',
+        'salary' => 'decimal:2',
+    ];
+
     public function getFormattedDepartmentAttribute(): string
     {
         if (strtolower($this->department ?? '') === 'it') {

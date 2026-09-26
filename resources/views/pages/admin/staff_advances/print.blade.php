@@ -754,17 +754,28 @@
         <td style="text-align: right; color: #999;">—</td>
         <td style="text-align: right; font-weight: 800; color: #3d1a06;">{{ number_format($advance->advance_amount, 2) }}</td>
       </tr>
-      @if((float)$advance->repaid_amount > 0)
-      <tr>
-        <td>
-          <strong>Repayments / Deductions Recovered</strong><br>
-          <span style="font-size: 8px; color: #6d4b32;">Payroll auto-deductions &amp; manual repayments to date</span>
-        </td>
-        <td style="text-align: right; color: #999;">—</td>
-        <td style="text-align: right; font-weight: 700; color: #16a34a;">{{ number_format($advance->repaid_amount, 2) }}</td>
-        <td style="text-align: right; font-weight: 700;">{{ number_format((float)$advance->advance_amount - (float)$advance->repaid_amount, 2) }}</td>
-      </tr>
-      @endif
+      @php
+        $repaymentList = isset($staffRepayments) ? $staffRepayments : $advance->repayments;
+        $runningBal = (float)$advance->advance_amount;
+      @endphp
+      @foreach($repaymentList as $repay)
+        @php
+          $runningBal = max(0, $runningBal - (float)$repay->amount);
+        @endphp
+        <tr>
+          <td>
+            <strong>Repayment Entry</strong> &bull; {{ $repay->repayment_type === 'payroll_deduction' ? 'Payroll Auto Deduction' : ucwords(str_replace('_', ' ', $repay->repayment_type)) }}<br>
+            <span style="font-size: 8px; color: #6d4b32;">
+              Date: {{ $repay->repayment_date ? $repay->repayment_date->format('d M, Y') : 'N/A' }}
+              @if($repay->payroll) &bull; Month: {{ $repay->payroll->payroll_month }} @endif
+              @if($repay->notes) &bull; {{ $repay->notes }} @endif
+            </span>
+          </td>
+          <td style="text-align: right; color: #999;">—</td>
+          <td style="text-align: right; font-weight: 700; color: #16a34a;">{{ number_format($repay->amount, 2) }}</td>
+          <td style="text-align: right; font-weight: 800; color: #3d1a06;">{{ number_format($runningBal, 2) }}</td>
+        </tr>
+      @endforeach
     </tbody>
     <tfoot>
       <tr>

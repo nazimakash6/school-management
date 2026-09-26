@@ -55,6 +55,8 @@ return new class extends Migration {
             $table->string('roll_no')->nullable();
             $table->string('class_shift')->nullable();
             $table->string('admission_type')->nullable();
+            $table->decimal('class_fee', 10, 2)->nullable();
+            $table->decimal('six_monthly_fee', 10, 2)->nullable();
 
             $table->string('academic_notes')->nullable();
             // Address and transportation

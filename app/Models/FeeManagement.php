@@ -15,6 +15,7 @@ class FeeManagement extends Model
 
     protected $fillable = [
         'admission_id',
+        'academic_session_id',
         'invoice_no',
         'fee_type',
         'fee_month',
@@ -39,6 +40,11 @@ class FeeManagement extends Model
     public function admission(): BelongsTo
     {
         return $this->belongsTo(Admission::class, 'admission_id');
+    }
+
+    public function academicSession(): BelongsTo
+    {
+        return $this->belongsTo(AcademicSession::class, 'academic_session_id');
     }
 
     public function getNetAmountAttribute(): float

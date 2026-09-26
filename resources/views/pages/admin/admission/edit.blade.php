@@ -15,11 +15,13 @@
 
             const monthlyDiv = document.getElementById('monthlyFeeDiv');
             const quarterlyDiv = document.getElementById('quarterlyFeeDiv');
+            const sixMonthlyDiv = document.getElementById('sixMonthlyFeeDiv');
             const annualDiv = document.getElementById('annualFeeDiv');
 
             function toggleFeeFields() {
                 if (monthlyDiv) monthlyDiv.classList.add('d-none');
                 if (quarterlyDiv) quarterlyDiv.classList.add('d-none');
+                if (sixMonthlyDiv) sixMonthlyDiv.classList.add('d-none');
                 if (annualDiv) annualDiv.classList.add('d-none');
 
                 switch (feePlan.value) {
@@ -28,6 +30,12 @@
                         break;
                     case 'Quarterly':
                         if (quarterlyDiv) quarterlyDiv.classList.remove('d-none');
+                        break;
+                    case 'Six-Monthly':
+                    case 'Bi-Annual':
+                    case 'Half-Yearly':
+                    case '6 Months':
+                        if (sixMonthlyDiv) sixMonthlyDiv.classList.remove('d-none');
                         break;
                     case 'Annual':
                         if (annualDiv) annualDiv.classList.remove('d-none');
@@ -40,6 +48,7 @@
                 const planVal = feePlan ? feePlan.value : '';
                 const monthlyFee = parseFloat(document.querySelector('[name="monthly_fee"]')?.value || 0);
                 const quarterlyFee = parseFloat(document.querySelector('[name="quarterly_fee"]')?.value || 0);
+                const sixMonthlyFee = parseFloat(document.querySelector('[name="six_monthly_fee"]')?.value || 0);
                 const annualFee = parseFloat(document.querySelector('[name="annual_fee"]')?.value || 0);
                 const regFee = parseFloat(document.querySelector('[name="registration_fee"]')?.value || 0);
                 const discount = parseFloat(document.querySelector('[name="scholarship_discount"]')?.value || 0);
@@ -47,8 +56,9 @@
                 let baseFee = 0;
                 if (planVal === 'Monthly') baseFee = monthlyFee;
                 else if (planVal === 'Quarterly') baseFee = quarterlyFee;
+                else if (planVal === 'Six-Monthly' || planVal === 'Bi-Annual' || planVal === 'Half-Yearly' || planVal === '6 Months') baseFee = sixMonthlyFee;
                 else if (planVal === 'Annual') baseFee = annualFee;
-                else baseFee = monthlyFee || quarterlyFee || annualFee || 0;
+                else baseFee = monthlyFee || quarterlyFee || sixMonthlyFee || annualFee || 0;
 
                 const netFee = Math.max(0, (baseFee + regFee) - discount);
 
@@ -736,6 +746,9 @@
                                     <option value="Quarterly" @selected(old('fee_plan', $admission->fee_plan) == 'Quarterly')>
                                         Quarterly
                                     </option>
+                                    <option value="Six-Monthly" @selected(old('fee_plan', $admission->fee_plan) == 'Six-Monthly')>
+                                        Six Monthly (6 Months)
+                                    </option>
                                     <option value="Annual" @selected(old('fee_plan', $admission->fee_plan) == 'Annual')>
                                         Annual
                                     </option>
@@ -760,6 +773,17 @@
                                     class="form-control"
                                     name="quarterly_fee"
                                     value="{{ old('quarterly_fee', $admission->quarterly_fee) }}"
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div class="col-md-4 d-none" id="sixMonthlyFeeDiv">
+                                <label class="form-label">Six Monthly Fee</label>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    name="six_monthly_fee"
+                                    value="{{ old('six_monthly_fee', $admission->six_monthly_fee ?? '') }}"
                                     placeholder="0"
                                 />
                             </div>
