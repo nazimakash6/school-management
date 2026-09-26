@@ -3,466 +3,885 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Advance Invoice #{{ str_pad($advance->id, 5, '0', STR_PAD_LEFT) }} — {{ $advance->staff ? $advance->staff->full_name : 'Staff' }}</title>
+  @php
+    $staff = $advance->staff;
+    $staffName = $staff ? $staff->full_name : 'Staff Member';
+    $invNo = 'ADV-' . str_pad($advance->id, 5, '0', STR_PAD_LEFT);
+    $statusVal = is_object($advance->status) ? $advance->status->value : $advance->status;
+    $statusText = strtoupper(str_replace('_', ' ', $statusVal));
+  @endphp
+  <title>Salary Advance Invoice — {{ $staffName }} ({{ $invNo }})</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* ── Page setup ─────────────────────────────────────── */
-    @page {
-      size: A4 portrait;
-      margin: 8mm 10mm;
+    /* ===== RESET & COLOR SYSTEM =====
+       Admission Form Color Scheme:
+       - Dark Accent: #3d1a06 (Deep Mahogany Brown)
+       - Light Background: #fdfaf3 (Warm Parchment/Cream)
+       - Border/Gold Accent: #c7ad8d (Warm Bronze/Gold)
+       - Surface Card BG: #ffffff
+    ================================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    *, *::before, *::after {
-      box-sizing: border-box;
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      background: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #3d1a06;
+      line-height: 1.4;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 8pt;
-      color: #0f172a;
-      line-height: 1.35;
-      background: #f1f5f9;
+    @page {
+      size: A4 portrait;
+      margin: 6mm 8mm;
     }
 
-    /* ── Toolbar (screen only) ─────────────────────────── */
-    .toolbar {
-      background: #1e293b;
-      color: #fff;
-      padding: 8px 16px;
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .page-container {
+        width: 100% !important;
+        max-height: 285mm !important;
+        margin: 0 !important;
+        padding: 5mm 6mm !important;
+        box-shadow: none !important;
+        border: 1.5px solid #c7ad8d !important;
+        border-radius: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+        background: #fdfaf3 !important;
+      }
+    }
+
+    /* ===== TOP SCREEN ACTION BAR ===== */
+    .action-bar {
+      width: 210mm;
+      margin: 14px auto 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 8.5pt;
-    }
-    .btn-t {
-      border: none;
-      padding: 6px 14px;
-      font-weight: 600;
-      font-size: 8.5pt;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 6px;
-    }
-    .btn-print { background: #2563eb; color: #fff; }
-    .btn-back  { background: #64748b; color: #fff; }
-
-    /* ── A4 invoice card ───────────────────────────────── */
-    .page {
-      width: 210mm;
-      min-height: 297mm;
-      max-height: 297mm;
-      overflow: hidden;
-      margin: 12px auto;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
+      background: #3d1a06;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid #c7ad8d;
+      box-shadow: 0 10px 25px rgba(61, 26, 6, 0.25);
     }
 
-    /* ── Header ────────────────────────────────────────── */
-    .hdr {
-      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 65%, #3b82f6 100%);
-      padding: 10px 14px 8px;
+    .action-bar .status-info {
       display: flex;
-      justify-content: space-between;
       align-items: center;
       gap: 10px;
-    }
-    .hdr-left { display: flex; align-items: center; gap: 10px; flex: 1; }
-
-    .logo-img {
-      max-height: 48px;
-      max-width: 60px;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 4px;
-      padding: 3px;
-    }
-    .logo-ph {
-      width: 48px; height: 48px;
-      background: rgba(255,255,255,.15);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16pt; font-weight: 800; color: #fff;
+      color: #fdfaf3;
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    .school-name {
-      font-size: 11pt; font-weight: 800; color: #fff;
-      text-transform: uppercase; letter-spacing: .3px; margin: 0 0 1px;
+    .action-bar .status-badge {
+      background: #c7ad8d;
+      color: #3d1a06;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
     }
-    .school-tag  { font-size: 6.5pt; color: rgba(255,255,255,.72); margin: 0 0 3px; }
-    .school-meta { font-size: 6.5pt; color: rgba(255,255,255,.82); line-height: 1.5; }
 
-    .hdr-right { text-align: right; }
-    .inv-title  { font-size: 11pt; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: .8px; line-height: 1.2; }
-    .inv-no     { font-size: 8pt; color: rgba(255,255,255,.80); margin-top: 2px; }
-    .inv-date   { font-size: 7pt; color: rgba(255,255,255,.65); margin-top: 1px; }
+    .btn-group-actions {
+      display: flex;
+      gap: 10px;
+    }
 
-    /* ── Status ribbon ─────────────────────────────────── */
-    .ribbon {
-      padding: 4px 14px;
+    .btn-act {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-print {
+      background: #22c55e;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+    .btn-print:hover {
+      background: #16a34a;
+      transform: translateY(-1px);
+    }
+
+    .btn-back {
+      background: #c7ad8d;
+      color: #3d1a06;
+    }
+    .btn-back:hover {
+      background: #b89b78;
+    }
+
+    .btn-close-act {
+      background: #ef4444;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    .btn-close-act:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    /* ===== MAIN A4 PAGE CONTAINER ===== */
+    .page-container {
+      width: 210mm;
+      margin: 14px auto 24px;
+      background: #fdfaf3;
+      border: 1px solid #c7ad8d;
+      border-radius: 16px;
+      padding: 7mm 8mm;
+      box-shadow: 0 15px 35px rgba(61, 26, 6, 0.12);
+      position: relative;
+    }
+
+    /* ===== MODERN HERO HEADER ===== */
+    .header-card {
+      background: #ffffff;
+      border: 1px solid #c7ad8d;
+      border-radius: 12px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 7pt;
-      font-weight: 700;
-      color: #fff;
-      text-transform: uppercase;
-      letter-spacing: .4px;
+      gap: 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(61, 26, 6, 0.04);
     }
-    .r-approved         { background: #2563eb; }
-    .r-fully_repaid     { background: #16a34a; }
-    .r-pending          { background: #0891b2; }
-    .r-rejected         { background: #dc2626; }
-    .r-cancelled        { background: #6b7280; }
-    .r-default          { background: #334155; }
 
-    /* ── Body ──────────────────────────────────────────── */
-    .body { padding: 10px 14px; flex: 1; }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+    }
 
-    /* ── Two-col info cards ────────────────────────────── */
-    .two-col { display: flex; gap: 10px; margin-bottom: 9px; }
-    .info-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 5px; overflow: hidden; }
-    .ic-head {
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 4px 10px;
-      font-size: 6.5pt;
+    .brand-logo-box {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: #fdfaf3;
+      border: 1px solid #c7ad8d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+
+    .brand-logo {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .brand-details .bismillah {
+      font-size: 11px;
+      font-weight: 700;
+      color: #3d1a06;
+      margin-bottom: 1px;
+    }
+
+    .brand-details .school-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #3d1a06;
+      letter-spacing: -0.3px;
+      line-height: 1.15;
+    }
+
+    .brand-details .school-sub {
+      font-size: 9px;
+      font-weight: 600;
+      color: #6d4b32;
+      margin-top: 2px;
+    }
+
+    .header-voucher-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: right;
+    }
+
+    .voucher-pill-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .voucher-pill {
+      background: #3d1a06;
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .voucher-num {
+      font-size: 13px;
+      font-weight: 800;
+      color: #3d1a06;
+    }
+
+    .voucher-date {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #6d4b32;
+    }
+
+    .staff-avatar-box {
+      width: 58px;
+      height: 64px;
+      border-radius: 10px;
+      border: 1.5px solid #c7ad8d;
+      background: #fdfaf3;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 700;
+      color: #3d1a06;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .staff-avatar-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ===== FINANCIAL KPI HERO CARDS ===== */
+    .kpi-grid {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .kpi-card {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #c7ad8d;
+      border-radius: 10px;
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 8.5px;
       font-weight: 700;
       text-transform: uppercase;
-      color: #475569;
-      letter-spacing: .4px;
+      letter-spacing: 0.5px;
+      color: #6d4b32;
+      margin-bottom: 2px;
     }
-    .ic-body { padding: 5px 10px; }
-    .ir {
+
+    .kpi-card .kpi-value {
+      font-size: 15px;
+      font-weight: 800;
+      color: #3d1a06;
+      line-height: 1.1;
+    }
+
+    .kpi-card .kpi-sub {
+      font-size: 8px;
+      font-weight: 500;
+      color: #8c6a4f;
+      margin-top: 2px;
+    }
+
+    .kpi-card.kpi-highlight {
+      background: #3d1a06;
+      border-color: #3d1a06;
+    }
+
+    .kpi-card.kpi-highlight .kpi-label {
+      color: #c7ad8d;
+    }
+
+    .kpi-card.kpi-highlight .kpi-value {
+      color: #ffffff;
+    }
+
+    .kpi-card.kpi-highlight .kpi-sub {
+      color: #e5d6c5;
+    }
+
+    /* ===== MODERN SECTION HEADERS ===== */
+    .section-header-modern {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .section-header-modern .badge-num {
+      background: #3d1a06;
+      color: #ffffff;
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .section-header-modern h3 {
+      font-size: 10px;
+      font-weight: 800;
+      color: #3d1a06;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .section-header-modern .header-line {
+      flex: 1;
+      height: 1px;
+      background: #c7ad8d;
+      opacity: 0.6;
+    }
+
+    /* ===== MODERN DATA GRID TABLE ===== */
+    table.grid-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 9px;
+      margin-bottom: 6px;
+      background: #ffffff;
+      border: 1px solid #c7ad8d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table.grid-table th {
+      background: #3d1a06;
+      color: #ffffff;
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 5px 8px;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    table.grid-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #f0e8dd;
+      border-right: 1px solid #f0e8dd;
+      vertical-align: middle;
+    }
+
+    table.grid-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.grid-table td:last-child {
+      border-right: none;
+    }
+
+    .lbl-cell {
+      font-weight: 700;
+      color: #6d4b32;
+      background: #fdfaf3;
+      width: 16%;
+      font-size: 8.5px;
+    }
+
+    .val-cell {
+      color: #1a0b03;
+      font-weight: 600;
+      width: 34%;
+    }
+
+    /* ===== RECOVERY PROGRESS TRACK ===== */
+    .progress-bar-card {
+      background: #ffffff;
+      border: 1px solid #c7ad8d;
+      border-radius: 8px;
+      padding: 5px 10px;
+      margin-bottom: 6px;
+    }
+
+    .progress-info {
       display: flex;
       justify-content: space-between;
-      padding: 2.5px 0;
-      border-bottom: 1px dashed #f1f5f9;
-      font-size: 7.5pt;
-      gap: 6px;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #3d1a06;
+      margin-bottom: 3px;
     }
-    .ir:last-child { border-bottom: none; }
-    .il { color: #64748b; white-space: nowrap; }
-    .iv { font-weight: 600; text-align: right; }
 
-    /* ── Financial summary row ─────────────────────────── */
-    .fin-row { display: flex; gap: 8px; margin-bottom: 9px; }
-    .fin-cell {
+    .progress-track {
+      height: 6px;
+      background: #f0e8dd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6d4b32 0%, #3d1a06 100%);
+      border-radius: 10px;
+    }
+
+    /* ===== REMARKS & NOTES CARD ===== */
+    .notes-card {
+      background: #ffffff;
+      border: 1px solid #c7ad8d;
+      border-left: 3.5px solid #3d1a06;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      font-size: 8.5px;
+    }
+
+    .notes-card strong {
+      color: #3d1a06;
+      display: block;
+      margin-bottom: 2px;
+      font-weight: 800;
+    }
+
+    /* ===== SIGNATURES ROW ===== */
+    .signatures-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 10px;
+      gap: 12px;
+    }
+
+    .sig-box {
       flex: 1;
-      border-radius: 5px;
-      padding: 7px 10px;
+      background: #ffffff;
+      border: 1px dashed #c7ad8d;
+      border-radius: 8px;
+      padding: 8px 10px;
       text-align: center;
     }
-    .fc-issued  { background: #eff6ff; border: 1.5px solid #bfdbfe; }
-    .fc-repaid  { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
-    .fc-balance { background: #fff7ed; border: 1.5px solid #fed7aa; }
 
-    .fl { font-size: 6pt; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
-    .fc-issued  .fl { color: #1d4ed8; }
-    .fc-repaid  .fl { color: #15803d; }
-    .fc-balance .fl { color: #c2410c; }
-
-    .fa { font-size: 10.5pt; font-weight: 800; line-height: 1; }
-    .fc-issued  .fa { color: #1d4ed8; }
-    .fc-repaid  .fa { color: #15803d; }
-    .fc-balance .fa { color: #c2410c; }
-
-    .fs { font-size: 6pt; color: #64748b; margin-top: 2px; }
-
-    /* ── Progress bar ──────────────────────────────────── */
-    .prog-wrap { margin-bottom: 9px; }
-    .prog-hdr  { display: flex; justify-content: space-between; font-size: 7.5pt; font-weight: 600; margin-bottom: 3px; color: #334155; }
-    .prog-track { height: 7px; background: #e2e8f0; border-radius: 20px; overflow: hidden; }
-    .prog-fill  { height: 100%; background: linear-gradient(90deg,#16a34a,#4ade80); border-radius: 20px; }
-
-    /* ── Ledger table ──────────────────────────────────── */
-    .ledger { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 7.5pt; }
-    .ledger thead tr:first-child th {
-      background: #1e40af; color: #fff;
-      padding: 5px 8px; font-size: 7.5pt; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .3px; text-align: left;
+    .sig-line {
+      border-top: 1.5px solid #3d1a06;
+      margin: 20px auto 4px;
+      width: 80%;
     }
-    .ledger thead tr:nth-child(2) th {
-      background: #dbeafe; color: #1e40af;
-      padding: 4px 8px; font-size: 7pt; font-weight: 700;
-      text-transform: uppercase;
-    }
-    .ledger tbody td {
-      padding: 5px 8px;
-      border-bottom: 1px solid #f1f5f9;
-      vertical-align: top;
-    }
-    .ledger tfoot td {
-      padding: 5px 8px;
+
+    .sig-name {
+      font-size: 9px;
       font-weight: 800;
-      background: #f1f5f9;
-      border-top: 2px solid #1e40af;
-    }
-    .text-r { text-align: right; }
-    .text-c { text-align: center; }
-
-    /* ── Notes ─────────────────────────────────────────── */
-    .notes {
-      background: #fafafa;
-      border: 1px solid #e2e8f0;
-      border-left: 3px solid #2563eb;
-      border-radius: 0 4px 4px 0;
-      padding: 5px 10px;
-      font-size: 7pt;
-      color: #475569;
-      margin-bottom: 8px;
-      white-space: pre-line;
-    }
-    .notes strong { color: #0f172a; display: block; margin-bottom: 2px; font-size: 7pt; }
-
-    /* ── Divider ────────────────────────────────────────── */
-    .div { border: none; border-top: 1px solid #e2e8f0; margin: 7px 0; }
-
-    /* ── Signatures ────────────────────────────────────── */
-    .sig-row { display: flex; gap: 8px; margin-top: 10px; }
-    .sig-cell { flex: 1; text-align: center; }
-    .sig-line { border-top: 1.2px dashed #94a3b8; width: 85%; margin: 0 auto 3px auto; }
-    .sig-name { font-size: 7.5pt; font-weight: 700; color: #334155; }
-    .sig-role { font-size: 6.5pt; color: #64748b; margin-top: 1px; }
-    .stamp-img { max-width: 52px; max-height: 52px; object-fit: contain; opacity: .85; margin-bottom: 2px; }
-
-    /* ── Footer band ────────────────────────────────────── */
-    .footer {
-      background: #f8fafc;
-      border-top: 1px solid #e2e8f0;
-      padding: 5px 14px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 6.5pt;
-      color: #94a3b8;
-      margin-top: auto;
+      color: #3d1a06;
     }
 
-    /* ── Print overrides ────────────────────────────────── */
-    @media print {
-      html, body { background: #fff; }
-      .toolbar   { display: none !important; }
-      .page {
-        margin: 0;
-        width: 100%;
-        min-height: unset;
-        max-height: unset;
-        overflow: visible;
-      }
+    .sig-role {
+      font-size: 7.5px;
+      font-weight: 600;
+      color: #6d4b32;
+    }
+
+    .stamp-img {
+      max-width: 40px;
+      max-height: 40px;
+      object-fit: contain;
+      margin-bottom: 2px;
+      opacity: 0.9;
+    }
+
+    /* ===== FOOTER BANNER ===== */
+    .page-footer {
+      text-align: center;
+      font-size: 7.5px;
+      font-weight: 600;
+      color: #6d4b32;
+      margin-top: 8px;
+      padding-top: 4px;
+      border-top: 1px solid #c7ad8d;
     }
   </style>
 </head>
 <body>
 
-  {{-- Toolbar (hidden on print) --}}
-  <div class="toolbar">
-    <span><strong>Salary Advance Invoice</strong> &bull; {{ $advance->staff ? $advance->staff->full_name : '' }} &bull; #{{ str_pad($advance->id, 5, '0', STR_PAD_LEFT) }}</span>
-    <div>
-      <button class="btn-t btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
-      <button class="btn-t btn-back"  onclick="history.back()">← Back</button>
+<!-- Screen Top Action Bar -->
+<div class="action-bar no-print">
+  <div class="status-info">
+    <span>💳 Salary Advance Voucher &bull; {{ $invNo }}</span>
+    <span class="status-badge">{{ $statusText }}</span>
+  </div>
+  <div class="btn-group-actions">
+    <button onclick="window.print()" class="btn-act btn-print">
+      🖨️ Print Invoice
+    </button>
+    <button onclick="window.close(); setTimeout(function(){ if(!window.closed){ window.history.back(); } }, 200);" class="btn-act btn-close-act">
+      ✖ Close
+    </button>
+    <a href="{{ route('staff-advances.show', $advance->id) }}" class="btn-act btn-back">
+      📋 View Record
+    </a>
+    <a href="{{ route('staff-advances.index') }}" class="btn-act btn-back">
+      ⬅ Advances List
+    </a>
+  </div>
+</div>
+
+<div class="page-container">
+
+  <!-- ===== HERO HEADER ===== -->
+  <div class="header-card">
+    <div class="header-brand">
+      <div class="brand-logo-box">
+        <img src="{{ $schoolInfo && $schoolInfo->logo_url ? $schoolInfo->logo_url : asset('assets/images/logo.png') }}" alt="School Logo" class="brand-logo" onerror="this.onerror=null; this.src='{{ asset('assets/images/logo.png') }}';">
+      </div>
+      <div class="brand-details">
+        <div class="bismillah">رَّبِّ زِدْنِي عِلْمًا</div>
+        <div class="school-title">{{ $schoolInfo->school_name ?? 'NOOR UL HUDA SUPERIOR SCHOOL' }}</div>
+        <div class="school-sub">
+          {{ $schoolInfo->tagline ?? 'DISCIPLINE | EDUCATION | EXCELLENCE' }}
+          @if($schoolInfo && $schoolInfo->phone) &bull; Phone: {{ $schoolInfo->phone }} @endif
+        </div>
+      </div>
+    </div>
+
+    <div class="header-voucher-meta">
+      <div class="voucher-pill-container">
+        <div class="voucher-pill">ADVANCE VOUCHER</div>
+        <div class="voucher-num">{{ $invNo }}</div>
+        <div class="voucher-date">Date: {{ $advance->advance_date ? $advance->advance_date->format('d/m/Y') : now()->format('d/m/Y') }}</div>
+      </div>
+
+      <div class="staff-avatar-box">
+        @if($staff && $staff->profile_picture)
+          <img src="{{ asset('storage/' . $staff->profile_picture) }}" alt="Staff Photo">
+        @else
+          STAFF<br>PHOTO
+        @endif
+      </div>
     </div>
   </div>
 
-  <div class="page">
-
-    {{-- ── Header ── --}}
-    <div class="hdr">
-      <div class="hdr-left">
-        @if($schoolInfo && $schoolInfo->logo_url)
-          <img src="{{ $schoolInfo->logo_url }}" alt="Logo" class="logo-img">
-        @else
-          <div class="logo-ph">{{ strtoupper(substr($schoolInfo->school_name ?? 'S', 0, 1)) }}</div>
-        @endif
-        <div>
-          <div class="school-name">{{ $schoolInfo->school_name ?? 'School Name' }}</div>
-          @if($schoolInfo && $schoolInfo->tagline)
-            <div class="school-tag">{{ $schoolInfo->tagline }}</div>
-          @endif
-          <div class="school-meta">
-            {{ $schoolInfo->full_address ?? '' }}
-            @if($schoolInfo && $schoolInfo->phone) &bull; {{ $schoolInfo->phone }} @endif
-            @if($schoolInfo && $schoolInfo->email) &bull; {{ $schoolInfo->email }} @endif
-          </div>
-        </div>
-      </div>
-      <div class="hdr-right">
-        <div class="inv-title">Advance<br>Invoice</div>
-        <div class="inv-no"># {{ str_pad($advance->id, 5, '0', STR_PAD_LEFT) }}</div>
-        <div class="inv-date">{{ now()->format('d M Y') }}</div>
-      </div>
+  <!-- ===== FINANCIAL KPI HERO CARDS ===== -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Current Voucher Advance</div>
+      <div class="kpi-value">Rs. {{ number_format($advance->advance_amount, 2) }}</div>
+      <div class="kpi-sub">Voucher Disbursed Amount</div>
     </div>
-
-    {{-- ── Status ribbon ── --}}
-    @php
-      $statusVal   = is_object($advance->status) ? $advance->status->value : $advance->status;
-      $validStatus = ['approved','fully_repaid','pending','rejected','cancelled'];
-      $rClass      = in_array($statusVal, $validStatus) ? 'r-' . $statusVal : 'r-default';
-    @endphp
-    <div class="ribbon {{ $rClass }}">
-      <span>Status: {{ strtoupper(str_replace('_', ' ', $statusVal)) }}</span>
-      <span>Advance Date: {{ $advance->advance_date ? $advance->advance_date->format('d M Y') : 'N/A' }}</span>
+    <div class="kpi-card">
+      <div class="kpi-label">Current Voucher Outstanding</div>
+      <div class="kpi-value" style="color: #c2410c;">Rs. {{ number_format($advance->remaining_balance, 2) }}</div>
+      <div class="kpi-sub">Pending Voucher Recovery</div>
     </div>
+    @if(isset($previousUnpaidAdvances) && $previousUnpaidAdvances->count() > 0)
+    <div class="kpi-card">
+      <div class="kpi-label">Previous Unpaid Advances</div>
+      <div class="kpi-value" style="color: #dc2626;">Rs. {{ number_format($previousUnpaidTotalBalance, 2) }}</div>
+      <div class="kpi-sub">{{ $previousUnpaidAdvances->count() }} Unpaid Advance Record(s)</div>
+    </div>
+    <div class="kpi-card kpi-highlight">
+      <div class="kpi-label">Total Combined Outstanding</div>
+      <div class="kpi-value">Rs. {{ number_format($advance->remaining_balance + $previousUnpaidTotalBalance, 2) }}</div>
+      <div class="kpi-sub">Current + Previous Pending Balance</div>
+    </div>
+    @else
+    <div class="kpi-card kpi-highlight">
+      <div class="kpi-label">Outstanding Balance</div>
+      <div class="kpi-value">Rs. {{ number_format($advance->remaining_balance, 2) }}</div>
+      <div class="kpi-sub">Pending Recovery</div>
+    </div>
+    @endif
+  </div>
 
-    {{-- ── Body ── --}}
-    <div class="body">
+  <!-- ===== 1. STAFF PERSONAL INFORMATION ===== -->
+  <div class="section-header-modern">
+    <div class="badge-num">1</div>
+    <h3>Staff Personal Information</h3>
+    <div class="header-line"></div>
+  </div>
+  <table class="grid-table">
+    <tr>
+      <td class="lbl-cell">Full Name</td>
+      <td class="val-cell">{{ $staff ? $staff->full_name : 'N/A' }}</td>
+      <td class="lbl-cell">Staff Code / ID</td>
+      <td class="val-cell">{{ $staff ? ($staff->staff_id ? 'STF-' . $staff->staff_id : 'STF-' . $staff->id) : 'N/A' }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">CNIC Number</td>
+      <td class="val-cell">{{ $staff->cnic ?? 'N/A' }}</td>
+      <td class="lbl-cell">Gender / Marital</td>
+      <td class="val-cell">{{ ucfirst($staff->gender ?? 'N/A') }} / {{ ucfirst($staff->marital_status ?? 'N/A') }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Date of Birth</td>
+      <td class="val-cell">{{ $staff->dob ? \Carbon\Carbon::parse($staff->dob)->format('d M, Y') : 'N/A' }}</td>
+      <td class="lbl-cell">Religion / National</td>
+      <td class="val-cell">{{ ucfirst($staff->religion ?? 'Islam') }} / {{ ucfirst($staff->nationality ?? 'Pakistani') }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Primary Mobile</td>
+      <td class="val-cell">{{ $staff->mobile_no ?? 'N/A' }}</td>
+      <td class="lbl-cell">Alternate Mobile</td>
+      <td class="val-cell">{{ $staff->alternate_mobile_no ?? 'N/A' }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Email Address</td>
+      <td class="val-cell">{{ $staff->email ?? 'N/A' }}</td>
+      <td class="lbl-cell">Qualification / Exp.</td>
+      <td class="val-cell">{{ $staff->qualification ?? 'N/A' }} @if($staff->experience) ({{ $staff->experience }}) @endif</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Current Address</td>
+      <td class="val-cell" colspan="3">{{ $staff->current_address ?? 'N/A' }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Permanent Address</td>
+      <td class="val-cell" colspan="3">{{ $staff->permanent_address ?? ($staff->current_address ?? 'N/A') }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Emergency Contact</td>
+      <td class="val-cell" colspan="3">
+        {{ $staff->emergency_contact_name ?? 'N/A' }} 
+        @if($staff->emergency_contact_relation) ({{ $staff->emergency_contact_relation }}) @endif
+        @if($staff->emergency_contact_number) &bull; Mob: {{ $staff->emergency_contact_number }} @endif
+      </td>
+    </tr>
+  </table>
 
-      {{-- Two-column info cards --}}
-      <div class="two-col">
-        {{-- Staff info --}}
-        <div class="info-card">
-          <div class="ic-head">👤 Staff Information</div>
-          <div class="ic-body">
-            <div class="ir"><span class="il">Full Name</span>    <span class="iv">{{ $advance->staff ? $advance->staff->full_name : 'N/A' }}</span></div>
-            <div class="ir"><span class="il">Staff ID</span>     <span class="iv">{{ $advance->staff ? ($advance->staff->staff_id ?? 'STF-'.$advance->staff->id) : 'N/A' }}</span></div>
-            <div class="ir"><span class="il">Department</span>   <span class="iv">{{ $advance->staff ? $advance->staff->formatted_department : 'N/A' }}</span></div>
-            <div class="ir"><span class="il">Designation</span>  <span class="iv">{{ $advance->staff ? $advance->staff->formatted_designation : 'N/A' }}</span></div>
-            <div class="ir"><span class="il">Base Salary</span>  <span class="iv">Rs. {{ number_format($advance->staff->salary ?? 0, 2) }}</span></div>
-            <div class="ir"><span class="il">Mobile No</span>    <span class="iv">{{ $advance->staff->mobile_no ?? 'N/A' }}</span></div>
-          </div>
-        </div>
-        {{-- Advance info --}}
-        <div class="info-card">
-          <div class="ic-head">📋 Advance Details</div>
-          <div class="ic-body">
-            <div class="ir"><span class="il">Invoice No.</span>       <span class="iv"># {{ str_pad($advance->id, 5, '0', STR_PAD_LEFT) }}</span></div>
-            <div class="ir"><span class="il">Advance Date</span>      <span class="iv">{{ $advance->advance_date ? $advance->advance_date->format('d M Y') : 'N/A' }}</span></div>
-            <div class="ir"><span class="il">Payment Method</span>    <span class="iv" style="text-transform:capitalize;">{{ str_replace('_', ' ', $advance->payment_method) }}</span></div>
-            <div class="ir"><span class="il">Reason / Purpose</span>  <span class="iv">{{ $advance->reason ?? 'Not specified' }}</span></div>
-            <div class="ir"><span class="il">Status</span>            <span class="iv" style="text-transform:capitalize;">{{ str_replace('_', ' ', $statusVal) }}</span></div>
-            <div class="ir"><span class="il">Print Date</span>        <span class="iv">{{ now()->format('d M Y, h:i A') }}</span></div>
-          </div>
-        </div>
-      </div>
+  <!-- ===== 2. EMPLOYMENT & SALARY DETAILS ===== -->
+  <div class="section-header-modern">
+    <div class="badge-num">2</div>
+    <h3>Employment &amp; Banking Profile</h3>
+    <div class="header-line"></div>
+  </div>
+  <table class="grid-table">
+    <tr>
+      <td class="lbl-cell">Department</td>
+      <td class="val-cell">{{ $staff ? $staff->formatted_department : 'N/A' }}</td>
+      <td class="lbl-cell">Designation</td>
+      <td class="val-cell">{{ $staff ? $staff->formatted_designation : 'N/A' }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Employment Type</td>
+      <td class="val-cell">{{ ucwords(str_replace('_', ' ', $staff->employment_type ?? 'Full Time')) }}</td>
+      <td class="lbl-cell">Work Shift</td>
+      <td class="val-cell">{{ ucfirst($staff->shift ?? 'Morning') }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Joining Date</td>
+      <td class="val-cell">{{ $staff->joining_date ? \Carbon\Carbon::parse($staff->joining_date)->format('d M, Y') : 'N/A' }}</td>
+      <td class="lbl-cell">Basic Monthly Salary</td>
+      <td class="val-cell" style="font-weight: 800; color: #3d1a06;">
+        Rs. {{ number_format($staff->salary ?? 0, 2) }} <span style="font-size: 8px; font-weight: normal; color: #6d4b32;">({{ ucwords(str_replace('_', ' ', $staff->salary_type ?? 'Monthly')) }})</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Bank Name</td>
+      <td class="val-cell">{{ $staff->bank_name ?? 'N/A' }}</td>
+      <td class="lbl-cell">Account Title</td>
+      <td class="val-cell">{{ $staff->bank_account_title ?? 'N/A' }}</td>
+    </tr>
+    <tr>
+      <td class="lbl-cell">Account Number</td>
+      <td class="val-cell">{{ $staff->bank_account_number ?? 'N/A' }}</td>
+      <td class="lbl-cell">IBAN Number</td>
+      <td class="val-cell">{{ $staff->iban ?? 'N/A' }}</td>
+    </tr>
+  </table>
 
-      {{-- Financial summary --}}
-      <div class="fin-row">
-        <div class="fin-cell fc-issued">
-          <div class="fl">Advance Issued</div>
-          <div class="fa">Rs. {{ number_format($advance->advance_amount, 2) }}</div>
-          <div class="fs">Total disbursed</div>
-        </div>
-        <div class="fin-cell fc-repaid">
-          <div class="fl">Amount Repaid</div>
-          <div class="fa">Rs. {{ number_format($advance->repaid_amount, 2) }}</div>
-          <div class="fs">Recovered so far</div>
-        </div>
-        <div class="fin-cell fc-balance">
-          <div class="fl">Outstanding Balance</div>
-          <div class="fa">Rs. {{ number_format($advance->remaining_balance, 2) }}</div>
-          <div class="fs">Pending recovery</div>
-        </div>
-      </div>
-
-      {{-- Progress bar --}}
-      <div class="prog-wrap">
-        <div class="prog-hdr">
-          <span>Repayment Progress</span>
-          <span style="color:#15803d;">{{ $advance->repayment_progress }}% Recovered</span>
-        </div>
-        <div class="prog-track">
-          <div class="prog-fill" style="width:{{ $advance->repayment_progress }}%;"></div>
-        </div>
-      </div>
-
-      {{-- Ledger table --}}
-      <table class="ledger">
-        <thead>
-          <tr><th colspan="4">Advance Financial Ledger</th></tr>
-          <tr>
-            <th style="width:46%;">Description</th>
-            <th class="text-r" style="width:18%;">Debit (Rs.)</th>
-            <th class="text-r" style="width:18%;">Credit (Rs.)</th>
-            <th class="text-r" style="width:18%;">Balance (Rs.)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <strong>Advance Disbursed</strong> — {{ $advance->staff ? $advance->staff->full_name : 'Staff' }}<br>
-              <span style="color:#94a3b8;font-size:7pt;">
-                {{ $advance->advance_date ? $advance->advance_date->format('d M Y') : '' }}
-                &bull; via {{ ucwords(str_replace('_', ' ', $advance->payment_method)) }}
-              </span>
-            </td>
-            <td class="text-r" style="color:#1d4ed8;font-weight:700;">{{ number_format($advance->advance_amount, 2) }}</td>
-            <td class="text-r" style="color:#94a3b8;">—</td>
-            <td class="text-r" style="font-weight:800;">{{ number_format($advance->advance_amount, 2) }}</td>
-          </tr>
-          @if((float)$advance->repaid_amount > 0)
-          <tr>
-            <td>
-              <strong>Repayment Recovered</strong><br>
-              <span style="color:#94a3b8;font-size:7pt;">Accumulated repayments against advance</span>
-            </td>
-            <td class="text-r" style="color:#94a3b8;">—</td>
-            <td class="text-r" style="color:#15803d;font-weight:700;">{{ number_format($advance->repaid_amount, 2) }}</td>
-            <td class="text-r">{{ number_format((float)$advance->advance_amount - (float)$advance->repaid_amount, 2) }}</td>
-          </tr>
-          @endif
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="3" class="text-r" style="font-size:8pt;color:#1e40af;">OUTSTANDING BALANCE:</td>
-            <td class="text-r" style="font-size:9pt;color:{{ $advance->remaining_balance > 0 ? '#c2410c' : '#15803d' }};">
-              Rs. {{ number_format($advance->remaining_balance, 2) }}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-
-      {{-- Notes (if any) --}}
-      @if($advance->notes)
-        <div class="notes"><strong>📝 Notes / Remarks:</strong>{{ $advance->notes }}</div>
+  <!-- ===== 3. ADVANCE TRANSACTION & LEDGER ===== -->
+  <div class="section-header-modern">
+    <div class="badge-num">3</div>
+    <h3>Current Voucher Disbursement &amp; Financial Ledger</h3>
+    <div class="header-line"></div>
+  </div>
+  <table class="grid-table">
+    <thead>
+      <tr>
+        <th style="width: 44%;">TRANSACTION DETAILS</th>
+        <th style="width: 18%; text-align: right;">DEBIT (RS.)</th>
+        <th style="width: 18%; text-align: right;">CREDIT (RS.)</th>
+        <th style="width: 20%; text-align: right;">BALANCE (RS.)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>Advance Disbursed</strong> &bull; {{ $advance->reason ?? 'Personal Advance' }}<br>
+          <span style="font-size: 8px; color: #6d4b32;">Issued via {{ ucwords(str_replace('_', ' ', $advance->payment_method)) }} on {{ $advance->advance_date ? $advance->advance_date->format('d M, Y') : 'N/A' }}</span>
+        </td>
+        <td style="text-align: right; font-weight: 700; color: #3d1a06;">{{ number_format($advance->advance_amount, 2) }}</td>
+        <td style="text-align: right; color: #999;">—</td>
+        <td style="text-align: right; font-weight: 800; color: #3d1a06;">{{ number_format($advance->advance_amount, 2) }}</td>
+      </tr>
+      @if((float)$advance->repaid_amount > 0)
+      <tr>
+        <td>
+          <strong>Repayments / Deductions Recovered</strong><br>
+          <span style="font-size: 8px; color: #6d4b32;">Payroll auto-deductions &amp; manual repayments to date</span>
+        </td>
+        <td style="text-align: right; color: #999;">—</td>
+        <td style="text-align: right; font-weight: 700; color: #16a34a;">{{ number_format($advance->repaid_amount, 2) }}</td>
+        <td style="text-align: right; font-weight: 700;">{{ number_format((float)$advance->advance_amount - (float)$advance->repaid_amount, 2) }}</td>
+      </tr>
       @endif
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="lbl-cell" style="background: #3d1a06; color: #ffffff; font-weight: 800;">TOTAL SANCTIONED ADVANCE</td>
+        <td class="val-cell" style="text-align: right; font-weight: 800;">Rs. {{ number_format($advance->advance_amount, 2) }}</td>
+        <td class="lbl-cell" style="background: #3d1a06; color: #ffffff; font-weight: 800;">RECOVERED</td>
+        <td class="val-cell" style="text-align: right; font-weight: 800; color: #16a34a;">Rs. {{ number_format($advance->repaid_amount, 2) }}</td>
+      </tr>
+      <tr>
+        <td colspan="3" class="lbl-cell" style="background: #3d1a06; color: #ffffff; text-align: right; font-weight: 800;">OUTSTANDING RECOVERY BALANCE:</td>
+        <td class="val-cell" style="text-align: right; font-weight: 900; background: #fdfaf3; color: #3d1a06; font-size: 11px;">
+          Rs. {{ number_format($advance->remaining_balance, 2) }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
 
-      <hr class="div">
-
-      {{-- Signatures --}}
-      <div class="sig-row">
-        <div class="sig-cell">
-          <div class="sig-line" style="margin-top:28px;"></div>
-          <div class="sig-name">{{ $advance->staff ? $advance->staff->full_name : 'Employee' }}</div>
-          <div class="sig-role">Employee Signature</div>
-        </div>
-        <div class="sig-cell">
-          @if($schoolInfo && $schoolInfo->stamp_url)
-            <img src="{{ $schoolInfo->stamp_url }}" alt="Stamp" class="stamp-img"><br>
-          @else
-            <div style="height:34px;"></div>
-          @endif
-          <div class="sig-line"></div>
-          <div class="sig-name">Official Seal</div>
-          <div class="sig-role">School Stamp</div>
-        </div>
-        <div class="sig-cell">
-          <div class="sig-line" style="margin-top:28px;"></div>
-          <div class="sig-name">{{ $schoolInfo->principal_name ?? 'Principal / Director' }}</div>
-          <div class="sig-role">Authorized Signatory</div>
-        </div>
-      </div>
-
-    </div>{{-- /body --}}
-
-    {{-- Footer band --}}
-    <div class="footer">
-      <span>{{ $schoolInfo->school_name ?? 'School ERP' }} &bull; {{ $schoolInfo->full_address ?? '' }}</span>
-      <span>Generated: {{ now()->format('d-M-Y h:i A') }} &bull; Invoice # {{ str_pad($advance->id, 5, '0', STR_PAD_LEFT) }}</span>
+  <!-- Recovery Progress -->
+  <div class="progress-bar-card">
+    <div class="progress-info">
+      <span>CURRENT VOUCHER RECOVERY PROGRESS</span>
+      <span>{{ $advance->repayment_progress }}% RECOVERED</span>
     </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ $advance->repayment_progress }}%;"></div>
+    </div>
+  </div>
 
-  </div>{{-- /page --}}
+  <!-- ===== 4. PREVIOUS UNPAID ADVANCES OF STAFF ===== -->
+  @if(isset($previousUnpaidAdvances) && $previousUnpaidAdvances->count() > 0)
+  <div class="section-header-modern">
+    <div class="badge-num">4</div>
+    <h3>Previous Unpaid Advances &amp; Outstanding Loan History</h3>
+    <div class="header-line"></div>
+  </div>
+  <table class="grid-table">
+    <thead>
+      <tr>
+        <th style="width: 15%;">VOUCHER NO</th>
+        <th style="width: 15%;">ADVANCE DATE</th>
+        <th style="width: 25%;">REASON / PURPOSE</th>
+        <th style="width: 15%; text-align: right;">SANCTIONED (RS.)</th>
+        <th style="width: 15%; text-align: right;">REPAID (RS.)</th>
+        <th style="width: 15%; text-align: right;">UNPAID BALANCE (RS.)</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach($previousUnpaidAdvances as $prevAdv)
+        @php
+          $prevBalance = max(0, (float)$prevAdv->advance_amount - (float)$prevAdv->repaid_amount);
+          $prevInvNo = 'ADV-' . str_pad($prevAdv->id, 5, '0', STR_PAD_LEFT);
+        @endphp
+        <tr>
+          <td style="font-weight: 700; color: #3d1a06;">{{ $prevInvNo }}</td>
+          <td>{{ $prevAdv->advance_date ? $prevAdv->advance_date->format('d M, Y') : 'N/A' }}</td>
+          <td>{{ $prevAdv->reason ?? 'Personal Loan / Advance' }}</td>
+          <td style="text-align: right;">{{ number_format($prevAdv->advance_amount, 2) }}</td>
+          <td style="text-align: right; color: #16a34a;">{{ number_format($prevAdv->repaid_amount, 2) }}</td>
+          <td style="text-align: right; font-weight: 800; color: #dc2626;">Rs. {{ number_format($prevBalance, 2) }}</td>
+        </tr>
+      @endforeach
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" class="lbl-cell" style="background: #3d1a06; color: #ffffff; text-align: right; font-weight: 800;">TOTAL PREVIOUS UNPAID ADVANCES BALANCE:</td>
+        <td class="val-cell" style="text-align: right; font-weight: 900; background: #fdfaf3; color: #dc2626; font-size: 10px;">
+          Rs. {{ number_format($previousUnpaidTotalBalance, 2) }}
+        </td>
+      </tr>
+      <tr>
+        <td colspan="5" class="lbl-cell" style="background: #3d1a06; color: #ffffff; text-align: right; font-weight: 800;">CUMULATIVE TOTAL PENDING RECOVERY (ALL ADVANCES):</td>
+        <td class="val-cell" style="text-align: right; font-weight: 900; background: #3d1a06; color: #ffffff; font-size: 11px;">
+          Rs. {{ number_format($advance->remaining_balance + $previousUnpaidTotalBalance, 2) }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+  @endif
 
-  <script>
-    window.addEventListener('DOMContentLoaded', function () {
-      if (window.opener || window.location.search.includes('autoprint=1')) {
-        setTimeout(function () { window.print(); }, 500);
-      }
-    });
-  </script>
+  <!-- ===== 5. NOTES & REMARKS ===== -->
+  @if($advance->notes || ($staff && $staff->note))
+  <div class="notes-card">
+    <strong>Remarks &amp; Disbursement Notes:</strong>
+    @if($advance->notes) <div>&bull; {{ $advance->notes }}</div> @endif
+    @if($staff && $staff->note) <div>&bull; Staff Note: {{ $staff->note }}</div> @endif
+  </div>
+  @endif
+
+  <!-- ===== SIGNATURES ROW ===== -->
+  <div class="signatures-grid">
+    <div class="sig-box">
+      <div class="sig-line"></div>
+      <div class="sig-name">{{ $staffName }}</div>
+      <div class="sig-role">Employee Signature</div>
+    </div>
+    <div class="sig-box">
+      @if($schoolInfo && $schoolInfo->stamp_url)
+        <img src="{{ $schoolInfo->stamp_url }}" alt="Stamp" class="stamp-img"><br>
+      @endif
+      <div class="sig-line" style="margin-top: {{ $schoolInfo && $schoolInfo->stamp_url ? '4px' : '20px' }};"></div>
+      <div class="sig-name">Accounts Department</div>
+      <div class="sig-role">Verified &amp; Disbursed By</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-line"></div>
+      <div class="sig-name">{{ $schoolInfo->principal_name ?? 'Principal / Director' }}</div>
+      <div class="sig-role">Authorized Signatory &amp; Stamp</div>
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="page-footer">
+    {{ $schoolInfo->school_name ?? 'School Management System' }} &bull; {{ $schoolInfo->full_address ?? '' }} &bull; Generated on {{ now()->format('d-M-Y h:i A') }}
+  </div>
+
+</div>
+
 </body>
 </html>
+

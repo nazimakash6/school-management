@@ -4,6 +4,21 @@
 
 @push('styles')
   <link rel="stylesheet" href="{{ asset('css/payroll-create.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <style>
+    .select2-container--bootstrap-5 .select2-selection {
+      border-color: #dee2e6;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.375rem;
+      min-height: 38px;
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+      border-color: #dee2e6;
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+  </style>
 @endpush
 
 @section('content')
@@ -191,9 +206,19 @@
   </div>
 
   @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const staffSelect = document.getElementById('staff_id');
+      $(document).ready(function () {
+        const $staffSelect = $('#staff_id');
+
+        $staffSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: '-- Choose Staff Member --',
+          allowClear: true,
+          width: '100%'
+        });
+
         const basicSalaryInput = document.getElementById('basic_salary');
         const allowanceInput = document.getElementById('allowance');
         const deductionInput = document.getElementById('deduction');
@@ -207,31 +232,49 @@
         const deductionHelp = document.getElementById('deduction_help_text');
 
         function formatMoney(amount) {
-          return 'Rs. ' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const val = parseFloat(amount || 0);
+          if (val < 0) {
+            return '-Rs. ' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          return 'Rs. ' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function updateNetSalary() {
           const basic = parseFloat(basicSalaryInput.value) || 0;
           const allowance = parseFloat(allowanceInput.value) || 0;
           const deduction = parseFloat(deductionInput.value) || 0;
-          const net = Math.max(0, basic + allowance - deduction);
+          const net = basic + allowance - deduction;
           netSalaryDisplay.textContent = formatMoney(net);
+          if (net < 0) {
+            netSalaryDisplay.className = 'fw-bold fs-4 text-danger';
+          } else {
+            netSalaryDisplay.className = 'fw-bold fs-4 text-primary';
+          }
         }
 
-        staffSelect.addEventListener('change', function () {
-          const selectedOption = staffSelect.options[staffSelect.selectedIndex];
-          const salary = parseFloat(selectedOption.getAttribute('data-salary') || 0);
-          const advance = parseFloat(selectedOption.getAttribute('data-advance') || 0);
-          const dept = selectedOption.getAttribute('data-dept') || '';
-          const desig = selectedOption.getAttribute('data-desig') || '';
-
-          if (!staffSelect.value) {
+        function handleStaffChange() {
+          const staffSelectElem = $staffSelect[0];
+          if (!staffSelectElem || staffSelectElem.selectedIndex < 0) {
             infoCard.classList.add('d-none');
             basicSalaryInput.value = 0;
             deductionInput.value = 0;
             updateNetSalary();
             return;
           }
+
+          const selectedOption = staffSelectElem.options[staffSelectElem.selectedIndex];
+          if (!selectedOption || !staffSelectElem.value) {
+            infoCard.classList.add('d-none');
+            basicSalaryInput.value = 0;
+            deductionInput.value = 0;
+            updateNetSalary();
+            return;
+          }
+
+          const salary = parseFloat(selectedOption.getAttribute('data-salary') || 0);
+          const advance = parseFloat(selectedOption.getAttribute('data-advance') || 0);
+          const dept = selectedOption.getAttribute('data-dept') || '';
+          const desig = selectedOption.getAttribute('data-desig') || '';
 
           infoCard.classList.remove('d-none');
           infoSalary.textContent = formatMoney(salary);
@@ -253,14 +296,15 @@
           }
 
           updateNetSalary();
-        });
+        }
 
+        $staffSelect.on('change', handleStaffChange);
         allowanceInput.addEventListener('input', updateNetSalary);
         deductionInput.addEventListener('input', updateNetSalary);
 
         // Run initial calculation if staff is selected on load
-        if (staffSelect.value) {
-          staffSelect.dispatchEvent(new Event('change'));
+        if ($staffSelect.val()) {
+          handleStaffChange();
         } else {
           updateNetSalary();
         }

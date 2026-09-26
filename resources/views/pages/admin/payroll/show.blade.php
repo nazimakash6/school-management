@@ -59,7 +59,7 @@
         </div>
         <div class="text-end">
           <div class="text-slate-400 text-xs text-uppercase fw-semibold mb-1">Net Payable Amount</div>
-          <div class="payroll-hero-amount">Rs. {{ number_format($payroll->net_salary, 2) }}</div>
+          <div class="payroll-hero-amount {{ $payroll->net_salary < 0 ? 'text-danger' : '' }}">{{ $payroll->formatted_net_salary }}</div>
         </div>
       </div>
 
@@ -171,7 +171,7 @@
             <tfoot>
               <tr>
                 <th colspan="2" class="fs-6 fw-bold">TOTAL NET PAYABLE SALARY</th>
-                <th class="text-end fs-5 fw-extrabold text-primary">Rs. {{ number_format($payroll->net_salary, 2) }}</th>
+                <th class="text-end fs-5 fw-extrabold {{ $payroll->net_salary < 0 ? 'text-danger' : 'text-primary' }}">{{ $payroll->formatted_net_salary }}</th>
               </tr>
             </tfoot>
           </table>
@@ -253,7 +253,7 @@
       </div>
       <div>
         <div class="ps-net-amount-label">Net Payable Amount</div>
-        <div class="ps-net-amount">Rs. {{ number_format($payroll->net_salary, 2) }}</div>
+        <div class="ps-net-amount {{ $payroll->net_salary < 0 ? 'text-danger' : '' }}">{{ $payroll->formatted_net_salary }}</div>
       </div>
     </div>
 
@@ -315,7 +315,7 @@
           <div class="ps-net-box-label">Total Net Payable Salary</div>
           <div class="ps-net-box-sub">Basic {{ number_format($payroll->basic_salary,2) }} + Allow. {{ number_format($payroll->allowance,2) }} − Deduct. {{ number_format($payroll->deduction,2) }}</div>
         </div>
-        <div class="ps-net-box-amount">Rs. {{ number_format($payroll->net_salary, 2) }}</div>
+        <div class="ps-net-box-amount {{ $payroll->net_salary < 0 ? 'text-danger' : '' }}">{{ $payroll->formatted_net_salary }}</div>
       </div>
 
       {{-- Notes --}}

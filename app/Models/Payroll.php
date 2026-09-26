@@ -39,10 +39,19 @@ class Payroll extends Model
         return $this->belongsTo(Staff::class, 'staff_id');
     }
 
+    public function getFormattedNetSalaryAttribute(): string
+    {
+        $val = (float) $this->net_salary;
+        if ($val < 0) {
+            return '-Rs. ' . number_format(abs($val), 2);
+        }
+        return 'Rs. ' . number_format($val, 2);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Payroll $payroll) {
-            $payroll->net_salary = max(0, ((float) $payroll->basic_salary + (float) $payroll->allowance - (float) $payroll->deduction));
+            $payroll->net_salary = ((float) $payroll->basic_salary + (float) $payroll->allowance - (float) $payroll->deduction);
         });
     }
 }

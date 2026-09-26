@@ -4,6 +4,21 @@
 
 @push('styles')
   <link rel="stylesheet" href="{{ asset('css/payroll-edit.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <style>
+    .select2-container--bootstrap-5 .select2-selection {
+      border-color: #dee2e6;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.375rem;
+      min-height: 38px;
+    }
+    .select2-container--bootstrap-5 .select2-dropdown {
+      border-color: #dee2e6;
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+  </style>
 @endpush
 
 @section('content')
@@ -146,19 +161,43 @@
   </div>
 
   @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
+      $(document).ready(function () {
+        const $staffSelect = $('#staff_id');
+
+        $staffSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: '-- Select Staff Member --',
+          allowClear: true,
+          width: '100%'
+        });
+
         var basicSalaryInput = document.getElementById('basic_salary');
         var allowanceInput = document.getElementById('allowance');
         var deductionInput = document.getElementById('deduction');
         var netSalaryDisplay = document.getElementById('netSalaryDisplay');
 
+        function formatMoney(amount) {
+          const val = parseFloat(amount || 0);
+          if (val < 0) {
+            return '-Rs. ' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          return 'Rs. ' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
         function updateNetSalary() {
           var basic = parseFloat(basicSalaryInput.value) || 0;
           var allowance = parseFloat(allowanceInput.value) || 0;
           var deduction = parseFloat(deductionInput.value) || 0;
-          var net = Math.max(0, basic + allowance - deduction);
-          netSalaryDisplay.textContent = 'Rs. ' + net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          var net = basic + allowance - deduction;
+          netSalaryDisplay.textContent = formatMoney(net);
+          if (net < 0) {
+            netSalaryDisplay.className = 'fw-bold fs-5 text-danger';
+          } else {
+            netSalaryDisplay.className = 'fw-bold fs-5 text-primary';
+          }
         }
 
         basicSalaryInput.addEventListener('input', updateNetSalary);

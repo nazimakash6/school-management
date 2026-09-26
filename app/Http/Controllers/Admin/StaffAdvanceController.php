@@ -154,7 +154,24 @@ class StaffAdvanceController extends Controller
         $advance    = StaffAdvance::with('staff')->findOrFail($id);
         $schoolInfo = \App\Models\SchoolInfo::first();
 
-        return view('pages.admin.staff_advances.print', compact('advance', 'schoolInfo'));
+        $previousUnpaidAdvances = StaffAdvance::where('staff_id', $advance->staff_id)
+            ->where('id', '!=', $advance->id)
+            ->whereIn('status', ['approved', 'pending'])
+            ->get()
+            ->filter(function ($adv) {
+                return (float)$adv->advance_amount - (float)$adv->repaid_amount > 0;
+            });
+
+        $previousUnpaidTotalBalance = $previousUnpaidAdvances->sum(function ($adv) {
+            return max(0, (float)$adv->advance_amount - (float)$adv->repaid_amount);
+        });
+
+        return view('pages.admin.staff_advances.print', compact(
+            'advance',
+            'schoolInfo',
+            'previousUnpaidAdvances',
+            'previousUnpaidTotalBalance'
+        ));
     }
 
     public function destroy($id): RedirectResponse

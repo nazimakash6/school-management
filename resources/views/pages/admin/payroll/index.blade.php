@@ -194,7 +194,7 @@
               <td>Rs. {{ number_format($payroll->basic_salary, 2) }}</td>
               <td class="text-success">+ Rs. {{ number_format($payroll->allowance, 2) }}</td>
               <td class="text-danger">- Rs. {{ number_format($payroll->deduction, 2) }}</td>
-              <td><span class="fw-bold text-primary">Rs. {{ number_format($payroll->net_salary, 2) }}</span></td>
+              <td><span class="fw-bold {{ $payroll->net_salary < 0 ? 'text-danger' : 'text-primary' }}">{{ $payroll->formatted_net_salary }}</span></td>
               <td>
                 @if ($payroll->status === 'paid')
                   <span class="badge badge-success">Paid</span>

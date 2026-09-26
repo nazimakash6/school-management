@@ -126,7 +126,7 @@ class PayrollController extends Controller
         $this->processAdvanceRepaymentOnPayrollPaid($payroll);
 
         return redirect()
-            ->route('payroll.index')
+            ->route('payroll.show', $payroll->id)
             ->with('success', 'Payroll record created successfully.');
     }
 

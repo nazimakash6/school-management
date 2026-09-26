@@ -219,9 +219,9 @@
           <span class="badge bg-light text-dark border">{{ $staffAdvances->count() }} Total</span>
         </div>
         <div class="card-body p-0">
-          <div class="table-responsive">
+          <div class="table-responsive custom-scroll-container">
             <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
-              <thead class="bg-light">
+              <thead class="bg-light text-nowrap">
                 <tr>
                   <th class="ps-3">Date</th>
                   <th>Advance Amount</th>
@@ -234,7 +234,7 @@
               <tbody>
                 @forelse($staffAdvances as $stfAdv)
                   <tr class="{{ $stfAdv->id == $advance->id ? 'table-primary bg-primary-subtle' : '' }}">
-                    <td class="ps-3">
+                    <td class="ps-3 text-nowrap">
                       <div class="fw-semibold text-dark">
                         {{ $stfAdv->advance_date ? $stfAdv->advance_date->format('M d, Y') : 'N/A' }}
                         @if($stfAdv->id == $advance->id)
@@ -243,15 +243,15 @@
                       </div>
                       <small class="text-muted">#ADV-{{ sprintf('%04d', $stfAdv->id) }}</small>
                     </td>
-                    <td class="fw-bold text-primary">Rs. {{ number_format($stfAdv->advance_amount, 2) }}</td>
-                    <td class="fw-bold text-success">Rs. {{ number_format($stfAdv->repaid_amount, 2) }}</td>
-                    <td class="fw-bold text-danger">Rs. {{ number_format($stfAdv->remaining_balance, 2) }}</td>
-                    <td>
+                    <td class="fw-bold text-primary text-nowrap">Rs. {{ number_format($stfAdv->advance_amount, 2) }}</td>
+                    <td class="fw-bold text-success text-nowrap">Rs. {{ number_format($stfAdv->repaid_amount, 2) }}</td>
+                    <td class="fw-bold text-danger text-nowrap">Rs. {{ number_format($stfAdv->remaining_balance, 2) }}</td>
+                    <td class="text-nowrap">
                       <span class="badge {{ $stfAdv->status_badge_class }} border text-capitalize" style="font-size: 0.75rem;">
                         {{ str_replace('_', ' ', is_object($stfAdv->status) ? $stfAdv->status->value : $stfAdv->status) }}
                       </span>
                     </td>
-                    <td class="text-end pe-3">
+                    <td class="text-end pe-3 text-nowrap">
                       @if($stfAdv->id == $advance->id)
                         <span class="badge bg-secondary-subtle text-secondary border">Current</span>
                       @else
@@ -273,4 +273,36 @@
       </div>
     </div>
   </div>
+
+@push('styles')
+  <style>
+    .custom-scroll-container {
+      max-height: 380px;
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    .custom-scroll-container thead th {
+      position: sticky;
+      top: 0;
+      background-color: #f8f9fa !important;
+      z-index: 2;
+      box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+    .custom-scroll-container::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll-container::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    .custom-scroll-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+@endpush
 @endsection

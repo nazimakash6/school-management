@@ -185,7 +185,11 @@
       });
 
       function formatMoney(amount) {
-        return 'Rs. ' + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const val = parseFloat(amount || 0);
+        if (val < 0) {
+          return '-Rs. ' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return 'Rs. ' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       function updateSummary() {
@@ -210,10 +214,10 @@
         displayAdvance.textContent = formatMoney(existingAdvance);
 
         const totalAdvanceDeduction = existingAdvance + currentAdvanceInput;
-        const netRemaining = Math.max(0, salary - totalAdvanceDeduction);
+        const netRemaining = salary - totalAdvanceDeduction;
 
         displayRemaining.textContent = formatMoney(netRemaining);
-        if (salary - totalAdvanceDeduction < 0) {
+        if (netRemaining < 0) {
           displayRemaining.className = 'fw-bold text-danger fs-6';
         } else {
           displayRemaining.className = 'fw-bold text-success fs-6';
