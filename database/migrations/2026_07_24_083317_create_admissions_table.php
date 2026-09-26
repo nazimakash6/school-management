@@ -54,8 +54,6 @@ return new class extends Migration
             $table->string('group')->nullable();
             $table->string('roll_no')->nullable();
             $table->string('class_shift')->nullable();
-            $table->string('admission_type')->nullable();
-            $table->decimal('class_fee', 10, 2)->nullable();
             $table->string('fee_plan')->nullable();
             $table->string('fee_status')->default('pending');
             $table->decimal('registration_fee', 10, 2)->nullable();

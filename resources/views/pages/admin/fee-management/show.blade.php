@@ -27,11 +27,9 @@
             <button type="button" onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5">
               <i data-lucide="printer" style="width:1rem;height:1rem;"></i> Print Voucher
             </button>
-            @if($invoice->due_balance > 0 && $invoice->status !== 'cancelled')
-              <button type="button" class="btn btn-emerald-600 text-white btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#payModalShow" style="background-color: #059669; border-color: #059669;">
-                <i data-lucide="banknote" style="width:1rem;height:1rem;"></i> Record Payment
-              </button>
-            @endif
+            <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-emerald-600 text-white btn-sm px-3 shadow-sm d-inline-flex align-items-center gap-1.5" style="background-color: #059669; border-color: #059669;">
+              <i data-lucide="banknote" style="width:1rem;height:1rem;"></i> Collect Payment
+            </a>
             <a href="{{ route('fee-management.edit', $invoice) }}" class="btn btn-outline-secondary btn-sm px-3 d-inline-flex align-items-center gap-1.5">
               <i data-lucide="pencil" style="width:1rem;height:1rem;"></i> Edit
             </a>
@@ -191,6 +189,51 @@
         </div>
       </div>
 
+      @if(isset($previousUnpaid) && $previousUnpaid->isNotEmpty())
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4 border-danger">
+          <div class="card-header bg-danger-subtle py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-danger d-flex align-items-center gap-2">
+              <i data-lucide="alert-triangle" style="width:1.1rem;height:1.1rem;" class="text-danger"></i> Previous Pending Unpaid Transactions / Arrears
+            </h6>
+            <span class="badge bg-danger text-white fs-7">{{ $previousUnpaid->count() }} Unpaid {{ Str::plural('Voucher', $previousUnpaid->count()) }}</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 fs-7">
+              <thead class="table-light">
+                <tr>
+                  <th>Voucher #</th>
+                  <th>Fee Type</th>
+                  <th>Fee Month</th>
+                  <th>Due Date</th>
+                  <th>Invoice Amount</th>
+                  <th>Paid</th>
+                  <th class="text-end">Remaining Due Balance</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($previousUnpaid as $prev)
+                  <tr>
+                    <td class="fw-bold text-primary font-monospace">{{ $prev->invoice_no }}</td>
+                    <td class="text-capitalize">{{ str_replace('_', ' ', $prev->fee_type) }}</td>
+                    <td>{{ $prev->fee_month }}</td>
+                    <td class="text-danger">{{ $prev->due_date ? $prev->due_date->format('d M Y') : 'N/A' }}</td>
+                    <td>Rs. {{ number_format($prev->amount, 2) }}</td>
+                    <td class="text-success">Rs. {{ number_format($prev->paid_amount, 2) }}</td>
+                    <td class="text-end fw-bold text-danger">Rs. {{ number_format($prev->due_balance, 2) }}</td>
+                    <td class="text-end">
+                      <a href="{{ route('fee-management.show', $prev->id) }}" class="btn btn-outline-primary btn-sm py-0.5 px-2 rounded-pill fs-8" target="_blank">
+                        View Voucher
+                      </a>
+                    </td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+          </div>
+        </div>
+      @endif
+
       @if($invoice->notes)
         <div class="card border-0 shadow-sm rounded-3 p-3 bg-light mb-4">
           <div class="d-flex align-items-center gap-2 mb-1">
@@ -200,6 +243,79 @@
           <p class="mb-0 text-dark fs-7" style="white-space: pre-line;">{{ $invoice->notes }}</p>
         </div>
       @endif
+
+      {{-- PAYMENT TRANSACTIONS HISTORY TABLE --}}
+      <div class="card border-0 shadow-sm rounded-3 mb-4 fade-up">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+          <h5 class="card-title fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i data-lucide="history" class="text-primary" style="width:1.2rem;height:1.2rem;"></i>
+            Payment Transactions History / Receipts
+          </h5>
+          <a href="{{ route('fee-management.collect-payment', $invoice->id) }}" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+            <i data-lucide="plus" style="width:0.875rem;height:0.875rem;"></i> Collect Payment
+          </a>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light text-muted fs-7">
+                <tr>
+                  <th class="ps-3">Receipt #</th>
+                  <th>Payment Date</th>
+                  <th>Payment Method</th>
+                  <th>Amount Collected</th>
+                  <th>Notes / Remarks</th>
+                  <th class="text-end pe-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($invoice->payments as $payment)
+                  <tr>
+                    <td class="ps-3 fw-bold text-primary">
+                      {{ $payment->receipt_no }}
+                    </td>
+                    <td class="fs-7 text-dark fw-semibold">
+                      {{ $payment->payment_date ? $payment->payment_date->format('M d, Y') : 'N/A' }}
+                    </td>
+                    <td>
+                      <span class="badge bg-secondary-subtle text-secondary text-capitalize px-2 py-1">
+                        {{ str_replace('_', ' ', $payment->payment_method) }}
+                      </span>
+                    </td>
+                    <td class="fw-bold text-success">
+                      Rs. {{ number_format($payment->amount, 2) }}
+                    </td>
+                    <td class="fs-7 text-muted">
+                      {{ $payment->note ?: '—' }}
+                    </td>
+                    <td class="text-end pe-3">
+                      <a href="{{ route('fee-management.payment-receipt', $payment->id) }}" target="_blank" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1" title="Print Receipt">
+                        <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i> Receipt
+                      </a>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted fs-7">
+                      <i data-lucide="info" class="mb-1" style="width:1.5rem;height:1.5rem;"></i>
+                      <p class="mb-0">No payment transaction records found for this invoice yet.</p>
+                    </td>
+                  </tr>
+                @endforelse
+              </tbody>
+              @if($invoice->payments->isNotEmpty())
+                <tfoot class="bg-light border-top">
+                  <tr>
+                    <td colspan="3" class="fw-bold text-end ps-3 fs-7">Total Paid Collected:</td>
+                    <td class="fw-bold text-success fs-6">Rs. {{ number_format($invoice->payments->sum('amount'), 2) }}</td>
+                    <td colspan="2"></td>
+                  </tr>
+                </tfoot>
+              @endif
+            </table>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -365,6 +481,18 @@
             <td class="text-r" style="color:#15803d;font-weight:700;">− {{ number_format($invoice->paid_amount, 2) }}</td>
             <td class="text-r">{{ number_format($invoice->due_balance, 2) }}</td>
           </tr>
+          @endif
+          @if(isset($previousUnpaid) && $previousUnpaid->isNotEmpty())
+            @foreach($previousUnpaid as $prevInv)
+            <tr style="background-color: #fef2f2;">
+              <td>
+                <strong style="color: #dc2626;">Previous Unpaid Arrears</strong> — {{ $prevInv->invoice_no }} ({{ ucwords(str_replace('_',' ',$prevInv->fee_type)) }})<br>
+                <span style="color: #b91c1c; font-size: 7pt;">Billing Month: {{ $prevInv->fee_month }} &bull; Due Date: {{ $prevInv->due_date ? $prevInv->due_date->format('d M Y') : 'N/A' }}</span>
+              </td>
+              <td class="text-r" style="color: #dc2626; font-weight: 700;">+ {{ number_format($prevInv->due_balance, 2) }}</td>
+              <td class="text-r" style="color: #dc2626; font-weight: 700;">Pending Arrears</td>
+            </tr>
+            @endforeach
           @endif
         </tbody>
         <tfoot>

@@ -50,6 +50,26 @@ class FeeManagementController extends Controller
 
         $invoices = $query->paginate($perPage)->withQueryString();
 
+        // Fetch Payments Records for Tab 2
+        $paymentsQuery = \App\Models\FeePayment::with(['feeManagement', 'admission'])->latest('payment_date')->latest('id');
+
+        if ($search !== '') {
+            $paymentsQuery->where(function (Builder $q) use ($search) {
+                $q->where('receipt_no', 'like', "%{$search}%")
+                  ->orWhereHas('feeManagement', function (Builder $b) use ($search) {
+                      $b->where('invoice_no', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('admission', function (Builder $b) use ($search) {
+                      $b->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('admission_no', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $payments = $paymentsQuery->paginate(25, ['*'], 'payments_page')->withQueryString();
+        $paymentsCount = \App\Models\FeePayment::count();
+
         // Statistics
         $totalCollected = FeeManagement::where('status', '!=', 'cancelled')->sum('paid_amount');
         $totalDues = FeeManagement::whereIn('status', ['unpaid', 'partial'])
@@ -71,6 +91,8 @@ class FeeManagementController extends Controller
 
         return view('pages.admin.fee-management.index', compact(
             'invoices',
+            'payments',
+            'paymentsCount',
             'perPage',
             'search',
             'status',
@@ -87,13 +109,87 @@ class FeeManagementController extends Controller
         ));
     }
 
+    public function createCollectPayment(Request $request): View
+    {
+        $unpaidInvoices = FeeManagement::with(['admission', 'academicSession'])
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $allInvoices = FeeManagement::with(['admission', 'academicSession'])
+            ->orderBy('invoice_no', 'desc')
+            ->get();
+
+        $selectedInvoiceId = $request->get('invoice_id');
+        $selectedInvoice = $selectedInvoiceId ? FeeManagement::with(['admission', 'academicSession'])->find($selectedInvoiceId) : null;
+
+        $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+        $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+        return view('pages.admin.fee-management.create-collect-payment', compact('unpaidInvoices', 'allInvoices', 'selectedInvoice', 'receiptNo'));
+    }
+
+    public function storeGeneralCollectPayment(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'fee_management_id' => ['required', 'exists:fee_managements,id'],
+            'payment_amount'    => ['required', 'numeric', 'min:0.01'],
+            'payment_method'    => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
+            'payment_date'      => ['required', 'date'],
+            'note'              => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $invoice = FeeManagement::findOrFail($validated['fee_management_id']);
+
+        $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+        $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+        \App\Models\FeePayment::create([
+            'fee_management_id' => $invoice->id,
+            'admission_id'      => $invoice->admission_id,
+            'receipt_no'        => $receiptNo,
+            'amount'            => $validated['payment_amount'],
+            'payment_method'    => $validated['payment_method'],
+            'payment_date'      => $validated['payment_date'],
+            'note'              => $validated['note'] ?? null,
+        ]);
+
+        $totalPaid = (float) $invoice->payments()->sum('amount');
+        $invoice->paid_amount = $totalPaid;
+        $invoice->payment_method = $validated['payment_method'];
+        $invoice->payment_date = $validated['payment_date'];
+        $invoice->save();
+
+        return redirect()
+            ->route('fee-management.index', ['tab' => 'payments'])
+            ->with('success', 'Payment of Rs. ' . number_format($validated['payment_amount'], 2) . ' collected successfully (Receipt #' . $receiptNo . ').');
+    }
+
     public function create(Request $request): View
     {
         $students = Admission::with('academicSession')->orderBy('first_name')->get();
         $academicSessions = AcademicSession::orderBy('start_date', 'desc')->get();
+        
+        $classes = \App\Models\StudentClass::where('status', 'active')->orderBy('name')->get();
+        if ($classes->isEmpty()) {
+            $classes = Admission::query()
+                ->select('class_name')
+                ->whereNotNull('class_name')
+                ->where('class_name', '!=', '')
+                ->distinct()
+                ->orderBy('class_name')
+                ->get()
+                ->map(fn($item) => (object) ['name' => $item->class_name, 'id' => $item->class_name]);
+        }
+
+        $unpaidInvoices = FeeManagement::whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get()
+            ->groupBy('admission_id');
+
         $selectedAdmissionId = $request->get('admission_id');
 
-        return view('pages.admin.fee-management.create', compact('students', 'academicSessions', 'selectedAdmissionId'));
+        return view('pages.admin.fee-management.create', compact('students', 'academicSessions', 'classes', 'unpaidInvoices', 'selectedAdmissionId'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -120,18 +216,153 @@ class FeeManagementController extends Controller
         $latestId = FeeManagement::max('id') + 1;
         $validated['invoice_no'] = 'INV-' . date('Ym') . '-' . str_pad($latestId, 4, '0', STR_PAD_LEFT);
 
-        FeeManagement::create($validated);
+        $invoice = FeeManagement::create($validated);
 
         return redirect()
-            ->route('fee-management.index')
+            ->route('fee-management.show', $invoice->id)
             ->with('success', 'Fee invoice generated successfully.');
     }
 
     public function show($id): View
     {
-        $invoice = FeeManagement::with(['admission', 'academicSession'])->findOrFail($id);
+        $invoice = FeeManagement::with(['admission', 'academicSession', 'payments' => function ($q) {
+            $q->orderBy('payment_date', 'desc')->orderBy('id', 'desc');
+        }])->findOrFail($id);
 
-        return view('pages.admin.fee-management.show', compact('invoice'));
+        // Auto backfill single FeePayment record if paid_amount > 0 and no payments record exists yet
+        if ((float) $invoice->paid_amount > 0 && $invoice->payments->isEmpty()) {
+            $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+            $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+            \App\Models\FeePayment::create([
+                'fee_management_id' => $invoice->id,
+                'admission_id'      => $invoice->admission_id,
+                'receipt_no'        => $receiptNo,
+                'amount'            => $invoice->paid_amount,
+                'payment_method'    => $invoice->payment_method ?? 'cash',
+                'payment_date'      => $invoice->payment_date ? $invoice->payment_date->toDateString() : now()->toDateString(),
+                'note'              => 'Initial Payment Record',
+            ]);
+            $invoice->load('payments');
+        }
+        
+        // Fetch previous unpaid/partial invoices for this student and siblings (excluding current invoice)
+        $studentIds = [$invoice->admission_id];
+        if ($invoice->admission) {
+            $siblings = $invoice->admission->siblings;
+            foreach ($siblings as $sib) {
+                $sibAdmId = Admission::where('admission_no', $sib->admission_no)->value('id') ?: $sib->id;
+                $studentIds[] = $sibAdmId;
+            }
+        }
+        $studentIds = array_unique(array_filter($studentIds));
+
+        $previousUnpaid = FeeManagement::whereIn('admission_id', $studentIds)
+            ->where('id', '!=', $invoice->id)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        return view('pages.admin.fee-management.show', compact('invoice', 'previousUnpaid'));
+    }
+
+    public function collectPaymentForm($id): View|RedirectResponse
+    {
+        $invoice = FeeManagement::with(['admission', 'academicSession', 'payments' => function ($q) {
+            $q->orderBy('payment_date', 'desc')->orderBy('id', 'desc');
+        }])->findOrFail($id);
+
+        $student = $invoice->admission;
+
+        // Fetch unpaid/partial invoices for this student and siblings
+        $studentIds = [$invoice->admission_id];
+        if ($student) {
+            foreach ($student->siblings as $sib) {
+                $sibAdmId = Admission::where('admission_no', $sib->admission_no)->value('id') ?: $sib->id;
+                $studentIds[] = $sibAdmId;
+            }
+        }
+        $studentIds = array_unique(array_filter($studentIds));
+
+        $otherUnpaidInvoices = FeeManagement::whereIn('admission_id', $studentIds)
+            ->where('id', '!=', $invoice->id)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $totalOtherDues = $otherUnpaidInvoices->sum(fn ($i) => $i->due_balance);
+
+        // Auto generate next Receipt Number
+        $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+        $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+        return view('pages.admin.fee-management.collect-payment', compact('invoice', 'student', 'otherUnpaidInvoices', 'totalOtherDues', 'receiptNo'));
+    }
+
+    public function collectPaymentFormGeneral(Request $request): RedirectResponse
+    {
+        $invoiceId = $request->get('invoice_id');
+        if ($invoiceId) {
+            return redirect()->route('fee-management.collect-payment', $invoiceId);
+        }
+
+        $unpaidInvoice = FeeManagement::whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->first();
+
+        if ($unpaidInvoice) {
+            return redirect()->route('fee-management.collect-payment', $unpaidInvoice->id);
+        }
+
+        $latestInvoice = FeeManagement::latest()->first();
+        if ($latestInvoice) {
+            return redirect()->route('fee-management.collect-payment', $latestInvoice->id);
+        }
+
+        return redirect()->route('fee-management.index')->with('warning', 'No invoices found to collect payment.');
+    }
+
+    public function storePayment(Request $request, $id): RedirectResponse
+    {
+        $invoice = FeeManagement::findOrFail($id);
+
+        $validated = $request->validate([
+            'payment_amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_method' => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
+            'payment_date'   => ['required', 'date'],
+            'note'           => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Auto generate receipt_no
+        $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+        $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+        // Create distinct FeePayment entry in database
+        \App\Models\FeePayment::create([
+            'fee_management_id' => $invoice->id,
+            'admission_id'      => $invoice->admission_id,
+            'receipt_no'        => $receiptNo,
+            'amount'            => $validated['payment_amount'],
+            'payment_method'    => $validated['payment_method'],
+            'payment_date'      => $validated['payment_date'],
+            'note'              => $validated['note'] ?? null,
+        ]);
+
+        // Recalculate invoice total paid amount from all distinct payments
+        $totalPaid = (float) $invoice->payments()->sum('amount');
+        $invoice->paid_amount = $totalPaid;
+        $invoice->payment_method = $validated['payment_method'];
+        $invoice->payment_date = $validated['payment_date'];
+        $invoice->save(); // booted model event updates status ('paid', 'partial', 'unpaid')
+
+        return redirect()
+            ->route('fee-management.show', $invoice->id)
+            ->with('success', 'Payment of Rs. ' . number_format($validated['payment_amount'], 2) . ' recorded successfully (Receipt #' . $receiptNo . ').');
+    }
+
+    public function printPaymentReceipt($paymentId): View
+    {
+        $payment = \App\Models\FeePayment::with(['feeManagement.admission', 'feeManagement.academicSession'])->findOrFail($paymentId);
+        return view('pages.admin.fee-management.payment-receipt', compact('payment'));
     }
 
     public function edit($id): View
@@ -174,23 +405,7 @@ class FeeManagementController extends Controller
 
     public function recordPayment(Request $request, $id): RedirectResponse
     {
-        $invoice = FeeManagement::findOrFail($id);
-
-        $validated = $request->validate([
-            'payment_amount' => ['required', 'numeric', 'min:1', 'max:' . $invoice->due_balance],
-            'payment_method' => ['required', 'string', 'in:cash,bank_transfer,online,cheque'],
-            'payment_date'   => ['required', 'date'],
-        ]);
-
-        $invoice->paid_amount += (float) $validated['payment_amount'];
-        $invoice->payment_method = $validated['payment_method'];
-        $invoice->payment_date = $validated['payment_date'];
-
-        $invoice->save();
-
-        return redirect()
-            ->route('fee-management.index')
-            ->with('success', 'Payment of Rs. ' . number_format($validated['payment_amount'], 2) . ' recorded successfully.');
+        return $this->storePayment($request, $id);
     }
 
     public function destroy($id): RedirectResponse

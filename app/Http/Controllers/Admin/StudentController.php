@@ -205,8 +205,14 @@ class StudentController extends Controller
             'group' => ['nullable', 'string', 'max:255'],
             'roll_no' => ['nullable', 'string', 'max:50'],
             'class_shift' => ['nullable', 'string', 'max:100'],
-            'admission_type' => ['nullable', 'string', 'max:100'],
-            'class_fee' => ['nullable', 'numeric', 'min:0'],
+            'fee_plan' => ['nullable', 'string', 'max:100'],
+            'fee_status' => ['nullable', 'string', 'max:100'],
+            'registration_fee' => ['nullable', 'numeric', 'min:0'],
+            'monthly_fee' => ['nullable', 'numeric', 'min:0'],
+            'quarterly_fee' => ['nullable', 'numeric', 'min:0'],
+            'six_monthly_fee' => ['nullable', 'numeric', 'min:0'],
+            'annual_fee' => ['nullable', 'numeric', 'min:0'],
+            'scholarship_discount' => ['nullable', 'max:255'],
 
             'academic_notes' => ['nullable', 'string'],
 

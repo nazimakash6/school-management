@@ -692,7 +692,7 @@
                                     placeholder="Auto / manual"
                                 />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label">Shift</label>
                                 <select class="form-select" name="class_shift">
                                     <option value="">Select shift</option>
@@ -704,31 +704,7 @@
                                     </option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Admission Type</label>
-                                <select class="form-select" name="admission_type">
-                                    <option value="">Select type</option>
-                                    <option
-                                        value="new_admission"
-                                        @selected(old('admission_type', $admission->admission_type) == 'new_admission')
-                                    >
-                                        New Admission
-                                    </option>
-                                    <option
-                                        value="readmission"
-                                        @selected(old('admission_type', $admission->admission_type) == 'readmission')
-                                    >
-                                        Readmission
-                                    </option>
-                                    <option
-                                        value="transfer"
-                                        @selected(old('admission_type', $admission->admission_type) == 'transfer')
-                                    >
-                                        Transfer
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label">Fee Status</label>
                                 <select class="form-select" name="fee_status">
                                     <option value="pending" @selected(old('fee_status', $admission->fee_status ?? 'pending') == 'pending')>Pending</option>

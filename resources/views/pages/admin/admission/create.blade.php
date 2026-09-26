@@ -700,7 +700,7 @@
                                     placeholder="Auto / manual"
                                 />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label">Shift</label
                                 ><select class="form-select" name="class_shift" value="{{ old('class_shift') }}">
                                     <option value="">Select shift</option>
@@ -712,31 +712,7 @@
                                     </option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Admission Type</label
-                                ><select class="form-select" name="admission_type" value="{{ old('admission_type') }}">
-                                    <option value="">Select type</option>
-                                    <option
-                                        value="new_admission"
-                                        {{ old('admission_type') == 'new_admission' ? 'selected' : '' }}
-                                    >
-                                        New Admission
-                                    </option>
-                                    <option
-                                        value="readmission"
-                                        {{ old('admission_type') == 'readmission' ? 'selected' : '' }}
-                                    >
-                                        Readmission
-                                    </option>
-                                    <option
-                                        value="transfer"
-                                        {{ old('admission_type') == 'transfer' ? 'selected' : '' }}
-                                    >
-                                        Transfer
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label">Fee Status</label>
                                 <select class="form-select" name="fee_status">
                                     <option value="pending" {{ old('fee_status', 'pending') == 'pending' ? 'selected' : '' }}>Pending</option>

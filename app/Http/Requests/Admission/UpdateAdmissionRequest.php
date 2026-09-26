@@ -100,7 +100,6 @@ class UpdateAdmissionRequest extends FormRequest
             'group' => ['nullable', 'string', 'max:255'],
             'roll_no' => ['nullable', 'string', 'max:50'],
             'class_shift' => ['nullable', 'string', 'max:100'],
-            'admission_type' => ['nullable', 'string', 'max:100'],
             'fee_plan' => ['nullable', 'string', 'max:100'],
             'fee_status' => ['nullable', Rule::in(['pending', 'paid', 'partial'])],
             'registration_fee' => ['nullable', 'numeric', 'min:0'],

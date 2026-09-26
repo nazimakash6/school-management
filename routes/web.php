@@ -165,10 +165,16 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::post('examination/{examination}/marks', [ExaminationController::class, 'saveMarks'])->name('examination.save-marks');
 	Route::resource('examination', ExaminationController::class);
 	Route::resource('houses', HouseController::class);
+	Route::get('collect-payment/create', [FeeManagementController::class, 'createCollectPayment'])->name('collect-payment.create');
+	Route::post('collect-payment/store', [FeeManagementController::class, 'storeGeneralCollectPayment'])->name('collect-payment.store');
 	Route::get('fee-management/trash', [FeeManagementController::class, 'trash'])->name('fee-management.trash');
 	Route::get('fee-statement', [FeeManagementController::class, 'statement'])->name('fee-management.statement');
 	Route::get('fee-statement/export', [FeeManagementController::class, 'exportStatement'])->name('fee-management.statement.export');
 	Route::get('fee-statement/print', [FeeManagementController::class, 'printStatement'])->name('fee-management.statement.print');
+	Route::get('fee-management/collect-payment', [FeeManagementController::class, 'collectPaymentFormGeneral'])->name('fee-management.collect-payment-general');
+	Route::get('fee-management/{id}/collect-payment', [FeeManagementController::class, 'collectPaymentForm'])->name('fee-management.collect-payment');
+	Route::post('fee-management/{id}/collect-payment', [FeeManagementController::class, 'storePayment'])->name('fee-management.store-payment');
+	Route::get('fee-management/payment/{paymentId}/receipt', [FeeManagementController::class, 'printPaymentReceipt'])->name('fee-management.payment-receipt');
 	Route::post('fee-management/{id}/payment', [FeeManagementController::class, 'recordPayment'])->name('fee-management.payment');
 	Route::post('fee-management/{id}/restore', [FeeManagementController::class, 'restore'])->name('fee-management.restore');
 	Route::delete('fee-management/{id}/force-delete', [FeeManagementController::class, 'forceDelete'])->name('fee-management.force-delete');

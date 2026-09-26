@@ -155,16 +155,54 @@
                             <i data-lucide="notebook-text"></i>
                         </div>
                         @php
-                        $totFee = ($admission->monthly_fee ?? 0) + ($admission->quarterly_fee ?? 0) + ($admission->annual_fee ?? 0) + ($admission->registration_fee ?? 0);
-                        $disc = $admission->scholarship_discount ?? 0;
-                        $netFee = max($totFee - $disc, 0);
-                    @endphp
-                        <div>
-                            <div class="metric-title">Fee Plan / Net</div>
-                            <h4 class="metric-value text-success">
-                                {{ $admission->fee_plan ?: 'Standard' }}
+                            $planName = $admission->fee_plan ?: 'Monthly';
+                            $planFee = 0;
+                            $planLower = strtolower(trim($planName));
+                            if (in_array($planLower, ['monthly', 'month'])) {
+                                $planFee = $admission->monthly_fee ?? 0;
+                                $formattedPlan = 'Monthly';
+                            } elseif (in_array($planLower, ['quarterly', 'quarter'])) {
+                                $planFee = $admission->quarterly_fee ?? 0;
+                                $formattedPlan = 'Quarterly';
+                            } elseif (in_array($planLower, ['six-monthly', 'six monthly', 'six_monthly', 'six month', '6 months'])) {
+                                $planFee = $admission->six_monthly_fee ?? 0;
+                                $formattedPlan = 'Six Monthly';
+                            } elseif (in_array($planLower, ['annual', 'annually', 'year', 'yearly'])) {
+                                $planFee = $admission->annual_fee ?? 0;
+                                $formattedPlan = 'Annual';
+                            } else {
+                                $planFee = $admission->monthly_fee ?: ($admission->quarterly_fee ?: ($admission->six_monthly_fee ?: ($admission->annual_fee ?: 0)));
+                                $formattedPlan = ucfirst($planName);
+                            }
+                            $disc = $admission->scholarship_discount ?? 0;
+                            $netFee = max($planFee - $disc, 0);
+
+                            // Total gross fee across all fields for summary table
+                            $totFee = ($admission->monthly_fee ?? 0) + ($admission->quarterly_fee ?? 0) + ($admission->six_monthly_fee ?? 0) + ($admission->annual_fee ?? 0) + ($admission->registration_fee ?? 0);
+
+                            $siblingsList = $admission->siblings;
+                        @endphp
+                        <div class="w-100">
+                            <div class="metric-title d-flex justify-content-between align-items-center">
+                                <span>Fee Plan / Net</span>
+                                @if($siblingsList && $siblingsList->isNotEmpty())
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 fs-8" title="Linked Siblings">
+                                        <i class="bi bi-people-fill me-1"></i>{{ $siblingsList->count() }} {{ Str::plural('Sibling', $siblingsList->count()) }}
+                                    </span>
+                                @endif
+                            </div>
+                            <h4 class="metric-value text-success mb-0">
+                                {{ $formattedPlan }}
                                 <small class="fs-7 fw-normal text-muted ms-1">(Rs. {{ number_format($netFee) }})</small>
                             </h4>
+                            @if($siblingsList && $siblingsList->isNotEmpty())
+                                <div class="fs-8 text-primary fw-medium mt-1 text-truncate" title="Sibling: {{ $siblingsList->map(fn($s)=>$s->full_name)->implode(', ') }}">
+                                    <i class="bi bi-people-fill me-1"></i>Sibling: <strong>{{ $siblingsList->first()->full_name }}</strong>
+                                    @if($siblingsList->count() > 1)
+                                        <span class="text-muted">(+{{ $siblingsList->count() - 1 }} more)</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -977,6 +1015,8 @@
                                                         <th class="ps-3 py-2 text-muted fw-semibold">Sibling Name</th>
                                                         <th class="py-2 text-muted fw-semibold">Class / Section</th>
                                                         <th class="py-2 text-muted fw-semibold">Roll No</th>
+                                                        <th class="py-2 text-muted fw-semibold">Fee Plan</th>
+                                                        <th class="py-2 text-muted fw-semibold">Net Fee</th>
                                                         <th class="py-2 text-muted fw-semibold">Relation</th>
                                                         <th class="py-2 text-muted fw-semibold">Father / Guardian</th>
                                                         <th class="pe-3 py-2 text-end fw-semibold">Action</th>
@@ -1003,6 +1043,36 @@
                                                                 </span>
                                                             </td>
                                                             <td class="fw-semibold text-secondary">#{{ $sibling->roll_no ?: '-' }}</td>
+                                                            @php
+                                                                $sPlan = $sibling->fee_plan ?: 'Monthly';
+                                                                $sPlanLower = strtolower(trim($sPlan));
+                                                                if (in_array($sPlanLower, ['monthly', 'month'])) {
+                                                                    $sAmount = $sibling->monthly_fee ?? 0;
+                                                                    $sFormattedPlan = 'Monthly';
+                                                                } elseif (in_array($sPlanLower, ['quarterly', 'quarter'])) {
+                                                                    $sAmount = $sibling->quarterly_fee ?? 0;
+                                                                    $sFormattedPlan = 'Quarterly';
+                                                                } elseif (in_array($sPlanLower, ['six-monthly', 'six monthly', 'six_monthly', 'six month', '6 months'])) {
+                                                                    $sAmount = $sibling->six_monthly_fee ?? 0;
+                                                                    $sFormattedPlan = 'Six Monthly';
+                                                                } elseif (in_array($sPlanLower, ['annual', 'annually', 'year', 'yearly'])) {
+                                                                    $sAmount = $sibling->annual_fee ?? 0;
+                                                                    $sFormattedPlan = 'Annual';
+                                                                } else {
+                                                                    $sAmount = $sibling->monthly_fee ?: ($sibling->quarterly_fee ?: ($sibling->six_monthly_fee ?: ($sibling->annual_fee ?: 0)));
+                                                                    $sFormattedPlan = ucfirst($sPlan);
+                                                                }
+                                                                $sDisc = $sibling->scholarship_discount ?? 0;
+                                                                $sNet = max($sAmount - $sDisc, 0);
+                                                            @endphp
+                                                            <td>
+                                                                <span class="badge bg-secondary-subtle text-secondary border rounded-pill fw-semibold">
+                                                                    {{ $sFormattedPlan }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="fw-bold text-success">
+                                                                Rs. {{ number_format($sNet) }}
+                                                            </td>
                                                             <td>
                                                                 @if(strtolower($sibling->gender) === 'male')
                                                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill"><i class="bi bi-gender-male me-1"></i>Brother</span>

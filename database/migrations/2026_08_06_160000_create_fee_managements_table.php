@@ -26,10 +26,24 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('fee_payments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('fee_management_id')->constrained('fee_managements')->onDelete('cascade');
+            $table->foreignId('admission_id')->nullable()->constrained('admissions')->onDelete('cascade');
+            $table->string('receipt_no')->unique();
+            $table->decimal('amount', 10, 2);
+            $table->string('payment_method')->default('cash');
+            $table->date('payment_date');
+            $table->text('note')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('fee_payments');
         Schema::dropIfExists('fee_managements');
     }
 };

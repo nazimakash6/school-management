@@ -546,13 +546,8 @@
       <td class="td-val">{{ !$isBlank ? ($admission->group_name ?: ($admission->group ?: 'General')) : '________________________' }}</td>
     </tr>
     <tr>
-      <td class="td-lbl">Admission Type</td>
-      <td class="td-val">
-        @php $at = !$isBlank ? strtolower($admission->admission_type ?: '') : ''; @endphp
-        <span class="chk-box {{ in_array($at, ['new', 'new_admission', 'regular']) ? 'chk-active' : '' }}">{{ in_array($at, ['new', 'new_admission', 'regular']) ? '✓' : '' }}</span> New &nbsp;
-        <span class="chk-box {{ $at === 'transfer' ? 'chk-active' : '' }}">{{ $at === 'transfer' ? '✓' : '' }}</span> Transfer &nbsp;
-        <span class="chk-box {{ in_array($at, ['re_admission', 'readmission']) ? 'chk-active' : '' }}">{{ in_array($at, ['re_admission', 'readmission']) ? '✓' : '' }}</span> Re-Admission
-      </td>
+      <td class="td-lbl">Fee Status</td>
+      <td class="td-val">{{ !$isBlank ? ucfirst($admission->fee_status ?: 'pending') : '________________________' }}</td>
       <td class="td-lbl">Roll No.</td>
       <td class="td-val">{{ !$isBlank ? ($admission->roll_no ?: 'Unassigned') : '________' }}</td>
     </tr>

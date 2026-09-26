@@ -144,8 +144,47 @@
             }
         }
 
+        function initFeePlan() {
+            const feePlan = document.getElementById('fee_plan');
+            if (!feePlan) return;
+
+            const monthlyDiv = document.getElementById('monthlyFeeDiv');
+            const quarterlyDiv = document.getElementById('quarterlyFeeDiv');
+            const sixMonthlyDiv = document.getElementById('sixMonthlyFeeDiv');
+            const annualDiv = document.getElementById('annualFeeDiv');
+
+            function toggleFeeFields() {
+                if (monthlyDiv) monthlyDiv.classList.add('d-none');
+                if (quarterlyDiv) quarterlyDiv.classList.add('d-none');
+                if (sixMonthlyDiv) sixMonthlyDiv.classList.add('d-none');
+                if (annualDiv) annualDiv.classList.add('d-none');
+
+                switch (feePlan.value) {
+                    case 'Monthly':
+                        if (monthlyDiv) monthlyDiv.classList.remove('d-none');
+                        break;
+                    case 'Quarterly':
+                        if (quarterlyDiv) quarterlyDiv.classList.remove('d-none');
+                        break;
+                    case 'Six-Monthly':
+                    case 'Bi-Annual':
+                    case 'Half-Yearly':
+                    case '6 Months':
+                        if (sixMonthlyDiv) sixMonthlyDiv.classList.remove('d-none');
+                        break;
+                    case 'Annual':
+                        if (annualDiv) annualDiv.classList.remove('d-none');
+                        break;
+                }
+            }
+
+            feePlan.addEventListener('change', toggleFeeFields);
+            toggleFeeFields();
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             initSiblingFilterAndSelection();
+            initFeePlan();
         });
     </script>
 @endpush
@@ -804,40 +843,34 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Admission Type</label>
-                                <select class="form-select" name="admission_type">
-                                    <option value="">Select type</option>
-                                    <option
-                                        value="new_admission"
-                                        @selected (old('admission_type', $student->admission_type) === 'new_admission')
-                                    >
-                                        New Admission
-                                    </option>
-                                    <option
-                                        value="readmission"
-                                        @selected (old('admission_type', $student->admission_type) === 'readmission')
-                                    >
-                                        Readmission
-                                    </option>
-                                    <option
-                                        value="transfer"
-                                        @selected (old('admission_type', $student->admission_type) === 'transfer')
-                                    >
-                                        Transfer
-                                    </option>
+                                <label class="form-label">Fee Plan</label>
+                                <select class="form-select" name="fee_plan" id="fee_plan">
+                                    <option value="">Select Fee Plan</option>
+                                    <option value="Monthly" @selected(old('fee_plan', $student->fee_plan ?: ($student->admission->fee_plan ?? '')) == 'Monthly')>Monthly</option>
+                                    <option value="Quarterly" @selected(old('fee_plan', $student->fee_plan ?: ($student->admission->fee_plan ?? '')) == 'Quarterly')>Quarterly</option>
+                                    <option value="Six-Monthly" @selected(old('fee_plan', $student->fee_plan ?: ($student->admission->fee_plan ?? '')) == 'Six-Monthly')>Six Monthly (6 Months)</option>
+                                    <option value="Annual" @selected(old('fee_plan', $student->fee_plan ?: ($student->admission->fee_plan ?? '')) == 'Annual')>Annual</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Class Fee</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    class="form-control"
-                                    name="class_fee"
-                                    value="{{ old('class_fee', $student->class_fee) }}"
-                                    placeholder="e.g. 5000"
-                                />
+
+                            <div class="col-md-6 d-none" id="monthlyFeeDiv">
+                                <label class="form-label">Monthly Fee</label>
+                                <input type="number" class="form-control" name="monthly_fee" value="{{ old('monthly_fee', $student->monthly_fee ?: ($student->admission->monthly_fee ?? '')) }}" placeholder="0" />
+                            </div>
+
+                            <div class="col-md-6 d-none" id="quarterlyFeeDiv">
+                                <label class="form-label">Quarterly Fee</label>
+                                <input type="number" class="form-control" name="quarterly_fee" value="{{ old('quarterly_fee', $student->quarterly_fee ?: ($student->admission->quarterly_fee ?? '')) }}" placeholder="0" />
+                            </div>
+
+                            <div class="col-md-6 d-none" id="sixMonthlyFeeDiv">
+                                <label class="form-label">Six Monthly Fee</label>
+                                <input type="number" class="form-control" name="six_monthly_fee" value="{{ old('six_monthly_fee', $student->six_monthly_fee ?: ($student->admission->six_monthly_fee ?? '')) }}" placeholder="0" />
+                            </div>
+
+                            <div class="col-md-6 d-none" id="annualFeeDiv">
+                                <label class="form-label">Annual Fee</label>
+                                <input type="number" class="form-control" name="annual_fee" value="{{ old('annual_fee', $student->annual_fee ?: ($student->admission->annual_fee ?? '')) }}" placeholder="0" />
                             </div>
 
                             <div class="col-12">

@@ -30,7 +30,10 @@
       <a href="{{ route('fee-management.trash') }}" class="btn btn-outline-secondary btn-sm">
         <i data-lucide="archive" style="width:1rem;height:1rem;" class="me-1"></i> Trash ({{ $trashCount }})
       </a>
-      <a href="{{ route('fee-management.create') }}" class="btn btn-primary btn-sm ms-auto" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none;">
+      <a href="{{ route('collect-payment.create') }}" class="btn btn-success btn-sm ms-auto d-inline-flex align-items-center gap-1.5" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border: none;">
+        <i data-lucide="banknote" style="width:1rem;height:1rem;"></i> Collect Payment
+      </a>
+      <a href="{{ route('fee-management.create') }}" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none;">
         <i data-lucide="plus" style="width:1rem;height:1rem;" class="me-1"></i> Create Fee Invoice
       </a>
     </div>
@@ -99,227 +102,243 @@
     </div>
   </div>
 
-  <!-- Filter Section -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body py-3">
-      <form method="GET" action="{{ route('fee-management.index') }}" class="row g-2 align-items-center">
-        <div class="col-md-3">
-          <input type="text" name="search" class="form-control form-control-sm" placeholder="Search invoice, student or ID..." value="{{ request('search') }}">
-        </div>
-        <div class="col-md-2">
-          <select name="class_name" class="form-select form-select-sm">
-            <option value="all">All Classes</option>
-            @foreach($classesList as $c)
-              <option value="{{ $c }}" {{ request('class_name') == $c ? 'selected' : '' }}>{{ $c }}</option>
-            @endforeach
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select name="fee_type" class="form-select form-select-sm">
-            <option value="all">All Fee Types</option>
-            <option value="school_fee" {{ request('fee_type') == 'school_fee' ? 'selected' : '' }}>School Fee</option>
-            <option value="tuition" {{ request('fee_type') == 'tuition' ? 'selected' : '' }}>Tuition Fee</option>
-            <option value="admission" {{ request('fee_type') == 'admission' ? 'selected' : '' }}>Admission Fee</option>
-            <option value="examination" {{ request('fee_type') == 'examination' ? 'selected' : '' }}>Examination Fee</option>
-            <option value="transport" {{ request('fee_type') == 'transport' ? 'selected' : '' }}>Transport Fee</option>
-            <option value="hostel" {{ request('fee_type') == 'hostel' ? 'selected' : '' }}>Hostel Fee</option>
-            <option value="miscellaneous" {{ request('fee_type') == 'miscellaneous' ? 'selected' : '' }}>Miscellaneous</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select name="status" class="form-select form-select-sm">
-            <option value="all">All Status</option>
-            <option value="unpaid" {{ request('status') == 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-            <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>Partial</option>
-            <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Paid</option>
-            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-          </select>
-        </div>
-        <div class="col-md-3 d-flex gap-2">
-          <button type="submit" class="btn btn-sm btn-primary w-100">
-            <i data-lucide="filter" style="width:0.875rem;height:0.875rem;" class="me-1"></i> Filter
-          </button>
-          <a href="{{ route('fee-management.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
-        </div>
-      </form>
-    </div>
-  </div>
+  {{-- TWO TABS FOR RECORD SEPARATION --}}
+  <ul class="nav nav-tabs nav-tabs-bordered mb-4 bg-white p-2 rounded-3 border shadow-sm" role="tablist">
+    <li class="nav-item" role="presentation">
+      <a class="nav-link fs-6 {{ request('tab') !== 'payments' ? 'active fw-bold text-primary' : 'text-muted' }}" href="{{ route('fee-management.index', array_merge(request()->except('tab'), ['tab' => 'invoices'])) }}">
+        <i data-lucide="file-text" style="width:1.1rem;height:1.1rem;" class="me-1.5"></i>
+        Fee Invoices Record ({{ $invoices->total() }})
+      </a>
+    </li>
+    <li class="nav-item" role="presentation">
+      <a class="nav-link fs-6 {{ request('tab') === 'payments' ? 'active fw-bold text-success' : 'text-muted' }}" href="{{ route('fee-management.index', array_merge(request()->except('tab'), ['tab' => 'payments'])) }}">
+        <i data-lucide="receipt" style="width:1.1rem;height:1.1rem;" class="me-1.5"></i>
+        Collect Payments Record ({{ $paymentsCount }})
+      </a>
+    </li>
+  </ul>
 
-  <!-- Invoices Table -->
-  <div class="card border-0 shadow-sm">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Invoice No</th>
-            <th>Student</th>
-            <th>Fee Details</th>
-            <th>Amount</th>
-            <th>Paid</th>
-            <th>Due Balance</th>
-            <th>Due Date</th>
-            <th>Status</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse($invoices as $inv)
-            <tr>
-              <td>
-                <span class="fw-bold text-primary">{{ $inv->invoice_no }}</span>
-              </td>
-              <td>
-                <div class="fw-semibold text-dark">
-                  {{ $inv->admission ? ($inv->admission->first_name . ' ' . $inv->admission->last_name) : 'N/A' }}
-                </div>
-                <small class="text-muted">
-                  {{ $inv->admission ? ($inv->admission->admission_no . ' • Class: ' . $inv->admission->class_name) : '' }}
-                </small>
-              </td>
-              <td>
-                <span class="badge bg-light text-dark border text-capitalize me-1">{{ str_replace('_', ' ', $inv->fee_type) }}</span>
-                <small class="text-muted d-block">{{ $inv->fee_month }}</small>
-              </td>
-              <td>
-                <span class="fw-semibold">Rs. {{ number_format($inv->net_amount, 2) }}</span>
-                @if($inv->discount > 0)
-                  <small class="text-success d-block">Disc: Rs. {{ number_format($inv->discount, 2) }}</small>
-                @endif
-              </td>
-              <td class="text-success fw-semibold">
-                Rs. {{ number_format($inv->paid_amount, 2) }}
-              </td>
-              <td class="fw-bold {{ $inv->due_balance > 0 ? 'text-danger' : 'text-muted' }}">
-                Rs. {{ number_format($inv->due_balance, 2) }}
-              </td>
-              <td>
-                <small class="{{ $inv->due_date && $inv->due_date->isPast() && $inv->due_balance > 0 ? 'text-danger fw-bold' : 'text-muted' }}">
-                  {{ $inv->due_date ? $inv->due_date->format('M d, Y') : 'N/A' }}
-                </small>
-              </td>
-              <td>
-                <span class="badge {{ $inv->status_badge_class }} text-capitalize px-2 py-1">
-                  {{ $inv->status }}
-                </span>
-              </td>
-              <td class="text-end text-nowrap">
-                @php
-                  $stName = $inv->admission ? ($inv->admission->first_name . ' ' . $inv->admission->last_name) : 'Student';
-                  $stEmail = $inv->admission ? ($inv->admission->father_email ?? ($inv->admission->guardian_email ?? ($inv->admission->email ?? ''))) : '';
-                  $amtFormatted = number_format($inv->due_balance > 0 ? $inv->due_balance : $inv->net_amount, 2);
-                  $dueDateFormatted = $inv->due_date ? $inv->due_date->format('M d, Y') : 'Due';
-                  $feeSubject = "Fee Reminder: Rs. {$amtFormatted} due for {$stName} (Invoice #{$inv->invoice_no})";
-                  $feeMsg = "Dear Parent,\n\nThis is a friendly reminder that a fee payment of Rs. {$amtFormatted} for {$stName} (Invoice: {$inv->invoice_no}) is due on {$dueDateFormatted}.\n\nKindly deposit the payment at your earliest convenience to avoid late charges.\n\nThank you,\nAccounts Department";
-                @endphp
-                <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Send Email Fee Reminder"
-                        onclick="openEmailModal({
-                          name: @js($stName),
-                          email: @js($stEmail),
-                          type: 'Parent',
-                          template: 'fee',
-                          subject: @js($feeSubject),
-                          message: @js($feeMsg)
-                        })">
-                  <i data-lucide="mail" style="width:13px;height:13px;"></i>
-                </button>
-                <a href="{{ route('fee-management.show', $inv->id) }}" class="btn btn-sm btn-outline-info me-1" title="View / Print Voucher">
-                  <i data-lucide="file-text" style="width:0.875rem;height:0.875rem;"></i>
-                </a>
-                @if($inv->due_balance > 0 && $inv->status !== 'cancelled')
-                  <button type="button" class="btn btn-sm btn-outline-success me-1" data-bs-toggle="modal" data-bs-target="#payModal{{ $inv->id }}" title="Collect Payment">
-                    <i data-lucide="banknote" style="width:0.875rem;height:0.875rem;"></i>
-                  </button>
-                @endif
-                <a href="{{ route('fee-management.edit', $inv->id) }}" class="btn btn-sm btn-outline-warning me-1" title="Edit Invoice">
-                  <i data-lucide="edit-2" style="width:0.875rem;height:0.875rem;"></i>
-                </a>
-                <form action="{{ route('fee-management.destroy', $inv->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Move this invoice to trash?')">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Trash Invoice">
-                    <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
-                  </button>
-                </form>
-
-                <!-- Quick Payment Modal -->
-                @if($inv->due_balance > 0 && $inv->status !== 'cancelled')
-                  <div class="modal fade text-start" id="payModal{{ $inv->id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                      <div class="modal-content">
-                        <form action="{{ route('fee-management.payment', $inv->id) }}" method="POST">
-                          @csrf
-                          <div class="modal-header">
-                            <h5 class="modal-title fs-6 fw-bold">Collect Fee Payment</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                          </div>
-                          <div class="modal-body">
-                            <div class="p-3 bg-light rounded border mb-3">
-                              <div class="d-flex justify-content-between text-muted fs-7">
-                                <span>Invoice No:</span>
-                                <span class="fw-bold text-dark">{{ $inv->invoice_no }}</span>
-                              </div>
-                              <div class="d-flex justify-content-between text-muted fs-7">
-                                <span>Student:</span>
-                                <span class="fw-semibold text-dark">{{ $inv->admission ? ($inv->admission->first_name . ' ' . $inv->admission->last_name) : '' }}</span>
-                              </div>
-                              <div class="d-flex justify-content-between text-muted fs-7">
-                                <span>Net Total Amount:</span>
-                                <span class="fw-semibold text-dark">Rs. {{ number_format($inv->net_amount, 2) }}</span>
-                              </div>
-                              <div class="d-flex justify-content-between fs-7 mt-1 border-top pt-1">
-                                <span class="fw-bold">Due Balance:</span>
-                                <span class="fw-bold text-danger">Rs. {{ number_format($inv->due_balance, 2) }}</span>
-                              </div>
-                            </div>
-
-                            <div class="mb-3">
-                              <label class="form-label fw-semibold">Payment Amount (PKR) <span class="text-danger">*</span></label>
-                              <input type="number" step="0.01" min="1" max="{{ $inv->due_balance }}" name="payment_amount" class="form-control" value="{{ $inv->due_balance }}" required>
-                              <small class="text-muted">Max payable: Rs. {{ number_format($inv->due_balance, 2) }}</small>
-                            </div>
-
-                            <div class="row g-2 mb-3">
-                              <div class="col-md-6">
-                                <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
-                                <select name="payment_method" class="form-select" required>
-                                  <option value="cash">Cash</option>
-                                  <option value="bank_transfer">Bank Transfer</option>
-                                  <option value="online">Online Payment</option>
-                                  <option value="cheque">Cheque</option>
-                                </select>
-                              </div>
-                              <div class="col-md-6">
-                                <label class="form-label fw-semibold">Payment Date <span class="text-danger">*</span></label>
-                                <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-success btn-sm">Save Payment</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                @endif
-              </td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="9" class="text-center py-4 text-muted">
-                <i data-lucide="info" class="mb-2" style="width:2rem;height:2rem;"></i>
-                <p class="mb-0">No fee invoices found matching your criteria.</p>
-              </td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
-    </div>
-    @if($invoices->hasPages())
-      <div class="card-footer bg-white py-2 border-0">
-        {{ $invoices->links() }}
+  @if(request('tab') === 'payments')
+    {{-- TAB 2: COLLECT PAYMENTS RECORD TABLE --}}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="card-title fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i data-lucide="receipt" class="text-success" style="width:1.2rem;height:1.2rem;"></i>
+          Payment Receipts & Transaction History
+        </h5>
+        <a href="{{ route('collect-payment.create') }}" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+          <i data-lucide="plus" style="width:0.875rem;height:0.875rem;"></i> New Payment Collection
+        </a>
       </div>
-    @endif
-  </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">Receipt No</th>
+              <th>Invoice No</th>
+              <th>Student Name</th>
+              <th>Payment Date</th>
+              <th>Payment Method</th>
+              <th>Amount Collected</th>
+              <th>Notes / Remarks</th>
+              <th class="text-end pe-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($payments as $pm)
+              <tr>
+                <td class="ps-3 fw-bold text-primary">
+                  {{ $pm->receipt_no }}
+                </td>
+                <td>
+                  @if($pm->feeManagement)
+                    <a href="{{ route('fee-management.show', $pm->fee_management_id) }}" class="fw-semibold text-decoration-none">
+                      {{ $pm->feeManagement->invoice_no }}
+                    </a>
+                  @else
+                    <span class="text-muted">N/A</span>
+                  @endif
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">
+                    {{ $pm->admission ? ($pm->admission->first_name . ' ' . $pm->admission->last_name) : 'Student' }}
+                  </div>
+                  <small class="text-muted">
+                    {{ $pm->admission ? ($pm->admission->admission_no . ' • Class: ' . $pm->admission->class_name) : '' }}
+                  </small>
+                </td>
+                <td class="fs-7 text-dark fw-semibold">
+                  {{ $pm->payment_date ? $pm->payment_date->format('M d, Y') : 'N/A' }}
+                </td>
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary text-capitalize px-2 py-1">
+                    {{ str_replace('_', ' ', $pm->payment_method) }}
+                  </span>
+                </td>
+                <td class="fw-bold text-success">
+                  Rs. {{ number_format($pm->amount, 2) }}
+                </td>
+                <td class="fs-7 text-muted">
+                  {{ $pm->note ?: '—' }}
+                </td>
+                <td class="text-end pe-3">
+                  <a href="{{ route('fee-management.payment-receipt', $pm->id) }}" target="_blank" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1" title="Print Receipt">
+                    <i data-lucide="printer" style="width:0.875rem;height:0.875rem;"></i> Receipt
+                  </a>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                  <i data-lucide="info" class="mb-2" style="width:2rem;height:2rem;"></i>
+                  <p class="mb-0">No collected payment receipts found in the system yet.</p>
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+      @if($payments->hasPages())
+        <div class="card-footer bg-white py-2 border-0">
+          {{ $payments->links() }}
+        </div>
+      @endif
+    </div>
+  @else
+    {{-- TAB 1: FEE INVOICES RECORD TABLE --}}
+    <!-- Filter Section -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body py-3">
+        <form method="GET" action="{{ route('fee-management.index') }}" class="row g-2 align-items-center">
+          <input type="hidden" name="tab" value="invoices">
+          <div class="col-md-3">
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search invoice, student or ID..." value="{{ request('search') }}">
+          </div>
+          <div class="col-md-2">
+            <select name="class_name" class="form-select form-select-sm">
+              <option value="all">All Classes</option>
+              @foreach($classesList as $c)
+                <option value="{{ $c }}" {{ request('class_name') == $c ? 'selected' : '' }}>{{ $c }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select name="fee_type" class="form-select form-select-sm">
+              <option value="all">All Fee Types</option>
+              <option value="school_fee" {{ request('fee_type') == 'school_fee' ? 'selected' : '' }}>School Fee</option>
+              <option value="tuition" {{ request('fee_type') == 'tuition' ? 'selected' : '' }}>Tuition Fee</option>
+              <option value="admission" {{ request('fee_type') == 'admission' ? 'selected' : '' }}>Admission Fee</option>
+              <option value="examination" {{ request('fee_type') == 'examination' ? 'selected' : '' }}>Examination Fee</option>
+              <option value="transport" {{ request('fee_type') == 'transport' ? 'selected' : '' }}>Transport Fee</option>
+              <option value="hostel" {{ request('fee_type') == 'hostel' ? 'selected' : '' }}>Hostel Fee</option>
+              <option value="miscellaneous" {{ request('fee_type') == 'miscellaneous' ? 'selected' : '' }}>Miscellaneous</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select name="status" class="form-select form-select-sm">
+              <option value="all">All Status</option>
+              <option value="unpaid" {{ request('status') == 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+              <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>Partial</option>
+              <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Paid</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            <a href="{{ route('fee-management.index') }}" class="btn btn-light btn-sm">Reset</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Invoice No</th>
+              <th>Student</th>
+              <th>Fee Details</th>
+              <th>Amount</th>
+              <th>Paid</th>
+              <th>Due Balance</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($invoices as $inv)
+              <tr>
+                <td>
+                  <span class="fw-bold text-primary">{{ $inv->invoice_no }}</span>
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">
+                    {{ $inv->admission ? ($inv->admission->first_name . ' ' . $inv->admission->last_name) : 'N/A' }}
+                  </div>
+                  <small class="text-muted">
+                    {{ $inv->admission ? ($inv->admission->admission_no . ' • Class: ' . $inv->admission->class_name) : '' }}
+                  </small>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border text-capitalize me-1">{{ str_replace('_', ' ', $inv->fee_type) }}</span>
+                  <small class="text-muted d-block">{{ $inv->fee_month }}</small>
+                </td>
+                <td>
+                  <span class="fw-semibold">Rs. {{ number_format($inv->net_amount, 2) }}</span>
+                  @if($inv->discount > 0)
+                    <small class="text-success d-block">Disc: Rs. {{ number_format($inv->discount, 2) }}</small>
+                  @endif
+                </td>
+                <td class="text-success fw-semibold">
+                  Rs. {{ number_format($inv->paid_amount, 2) }}
+                </td>
+                <td class="fw-bold {{ $inv->due_balance > 0 ? 'text-danger' : 'text-muted' }}">
+                  Rs. {{ number_format($inv->due_balance, 2) }}
+                </td>
+                <td>
+                  <small class="{{ $inv->due_date && $inv->due_date->isPast() && $inv->due_balance > 0 ? 'text-danger fw-bold' : 'text-muted' }}">
+                    {{ $inv->due_date ? $inv->due_date->format('M d, Y') : 'N/A' }}
+                  </small>
+                </td>
+                <td>
+                  <span class="badge {{ $inv->status_badge_class }} text-capitalize px-2 py-1">
+                    {{ $inv->status }}
+                  </span>
+                </td>
+                <td class="text-end text-nowrap">
+                  <a href="{{ route('fee-management.show', $inv->id) }}" class="btn btn-sm btn-outline-info me-1" title="View / Print Voucher">
+                    <i data-lucide="file-text" style="width:0.875rem;height:0.875rem;"></i>
+                  </a>
+                  <a href="{{ route('fee-management.edit', $inv->id) }}" class="btn btn-sm btn-outline-warning me-1" title="Edit Invoice">
+                    <i data-lucide="edit-2" style="width:0.875rem;height:0.875rem;"></i>
+                  </a>
+                  <form action="{{ route('fee-management.destroy', $inv->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Move this invoice to trash?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Trash Invoice">
+                      <i data-lucide="trash-2" style="width:0.875rem;height:0.875rem;"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="9" class="text-center py-4 text-muted">
+                  <i data-lucide="info" class="mb-2" style="width:2rem;height:2rem;"></i>
+                  <p class="mb-0">No fee invoices found matching your criteria.</p>
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+      @if($invoices->hasPages())
+        <div class="card-footer bg-white py-2 border-0">
+          {{ $invoices->links() }}
+        </div>
+      @endif
+    </div>
+  @endif
 @endsection

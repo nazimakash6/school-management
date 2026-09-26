@@ -54,9 +54,14 @@ return new class extends Migration {
             $table->string('house_name')->nullable();
             $table->string('roll_no')->nullable();
             $table->string('class_shift')->nullable();
-            $table->string('admission_type')->nullable();
-            $table->decimal('class_fee', 10, 2)->nullable();
+            $table->string('fee_plan')->nullable();
+            $table->string('fee_status')->default('pending');
+            $table->decimal('registration_fee', 10, 2)->nullable();
+            $table->decimal('monthly_fee', 10, 2)->nullable();
+            $table->decimal('quarterly_fee', 10, 2)->nullable();
             $table->decimal('six_monthly_fee', 10, 2)->nullable();
+            $table->decimal('annual_fee', 10, 2)->nullable();
+            $table->string('scholarship_discount')->nullable();
 
             $table->string('academic_notes')->nullable();
             // Address and transportation

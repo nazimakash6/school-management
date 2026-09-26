@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FeeManagement extends Model
@@ -45,6 +46,11 @@ class FeeManagement extends Model
     public function academicSession(): BelongsTo
     {
         return $this->belongsTo(AcademicSession::class, 'academic_session_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(FeePayment::class, 'fee_management_id');
     }
 
     public function getNetAmountAttribute(): float
