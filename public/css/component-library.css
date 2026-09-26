@@ -1,0 +1,12 @@
+/* Component Library Page Styles */
+
+.component-section {
+  margin-bottom: 2rem;
+}
+
+.component-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}

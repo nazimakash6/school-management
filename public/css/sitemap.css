@@ -1,0 +1,18 @@
+/* Sitemap Page Styles */
+
+.sitemap-card .card-header {
+  background-color: var(--bg-surface-hover);
+}
+
+.sitemap-card a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.sitemap-card a:hover {
+  color: var(--color-primary-600);
+}

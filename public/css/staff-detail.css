@@ -1,0 +1,406 @@
+/* Staff Detail & Executive A4 Printable Dossier System (Admission Form Color Scheme) */
+
+@media screen {
+    .print-a4-document {
+        display: none !important;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 5mm 8mm;
+    }
+
+    html, body,
+    .app-wrapper,
+    .main-content,
+    .page-content {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-size: 8pt !important;
+        line-height: 1.25 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        position: static !important;
+        overflow: visible !important;
+        display: block !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Hide non-printable UI components */
+    .sidebar,
+    .sidebar-overlay,
+    .sidebar-brand,
+    .notification-panel,
+    .notification-overlay,
+    header, footer, nav,
+    .app-header, .app-sidebar, .topbar, .navbar,
+    .admission-page-wrapper,
+    .btn, .breadcrumb, .modern-tabs-card, .profile-header-card,
+    .bottom-action-bar, .quick-contact-actions, .summary-metric-card,
+    .alert {
+        display: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    /* Display A4 Printable Profile Document */
+    .print-a4-document,
+    .print-a4-document * {
+        visibility: visible !important;
+    }
+
+    .print-a4-document {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        position: static !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Header Banner & School Branding (Admission Style) */
+    .print-header-banner {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        border-bottom: 2.5px solid #0f172a !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 8px !important;
+        position: relative !important;
+    }
+
+    .print-brand-group {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    .print-logo-box {
+        width: 60px !important;
+        height: 60px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .print-school-logo {
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: contain !important;
+    }
+
+    .print-school-details {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .print-school-name {
+        font-size: 14pt !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        text-transform: uppercase !important;
+        margin: 0 !important;
+        letter-spacing: -0.2px !important;
+        line-height: 1.15 !important;
+    }
+
+    .print-school-tagline {
+        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        color: #2563eb !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        margin-top: 2px !important;
+    }
+
+    .print-school-contact {
+        font-size: 7pt !important;
+        color: #64748b !important;
+        margin-top: 2px !important;
+    }
+
+    .print-photo-badge-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+
+    .print-avatar-container {
+        width: 70px !important;
+        height: 80px !important;
+        border-radius: 6px !important;
+        overflow: hidden !important;
+        border: 2px solid #2563eb !important;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.15) !important;
+    }
+
+    .print-staff-photo {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+
+    .print-status-tag {
+        font-size: 6.5pt !important;
+        font-weight: 800 !important;
+        padding: 2px 8px !important;
+        border-radius: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    .status-tag-active {
+        background-color: #ecfdf5 !important;
+        color: #047857 !important;
+        border: 1px solid #a7f3d0 !important;
+    }
+
+    .status-tag-inactive {
+        background-color: #fef2f2 !important;
+        color: #dc2626 !important;
+        border: 1px solid #fca5a5 !important;
+    }
+
+    /* Title Bar & Ref (Admission Navy & Royal Blue Theme) */
+    .print-doc-title-bar {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: #ffffff !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 4px 10px !important;
+        border-radius: 6px !important;
+        margin-bottom: 8px !important;
+        border-left: 4px solid #2563eb !important;
+    }
+
+    .doc-title-text {
+        font-size: 9pt !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        color: #ffffff !important;
+    }
+
+    .doc-ref-text {
+        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        color: #93c5fd !important;
+    }
+
+    /* Meta Summary Grid (Admission Light Blue Theme) */
+    .print-meta-summary-strip {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 6px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .summary-tile {
+        background: #eff6ff !important;
+        border: 1px solid #bfdbfe !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        text-align: center !important;
+    }
+
+    .summary-label {
+        display: block !important;
+        font-size: 6pt !important;
+        font-weight: 800 !important;
+        color: #2563eb !important;
+        text-transform: uppercase !important;
+        margin-bottom: 1px !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    .summary-value {
+        display: block !important;
+        font-size: 8.5pt !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+    }
+
+    /* Section Headers (Admission Signature Blue Accent Bar) */
+    .print-section-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        background-color: #eff6ff !important;
+        border-left: 4px solid #2563eb !important;
+        border-top: 1px solid #dbeafe !important;
+        border-right: 1px solid #dbeafe !important;
+        border-bottom: 1px solid #dbeafe !important;
+        padding: 3.5px 8px !important;
+        margin-top: 7px !important;
+        margin-bottom: 4px !important;
+        border-radius: 3px !important;
+    }
+
+    .section-num {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        font-size: 7pt !important;
+        font-weight: 800 !important;
+        width: 16px !important;
+        height: 16px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .section-title {
+        font-size: 8pt !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: #1e293b !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    /* Grid Tables */
+    .print-grid-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-bottom: 4px !important;
+    }
+
+    .print-grid-table th,
+    .print-grid-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 3px 6px !important;
+        font-size: 7.5pt !important;
+        vertical-align: middle !important;
+    }
+
+    .print-grid-table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 700 !important;
+        width: 18% !important;
+        text-align: left !important;
+        text-transform: uppercase !important;
+        font-size: 7pt !important;
+        letter-spacing: 0.2px !important;
+    }
+
+    .print-grid-table td {
+        color: #0f172a !important;
+        font-weight: 500 !important;
+        width: 32% !important;
+    }
+
+    /* Badges */
+    .print-badge {
+        display: inline-block !important;
+        padding: 1px 6px !important;
+        font-size: 7pt !important;
+        font-weight: 700 !important;
+        border-radius: 4px !important;
+    }
+
+    .print-badge-info {
+        background-color: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border: 1px solid #bfdbfe !important;
+    }
+
+    .print-badge-secondary {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+    /* Signatures Section */
+    .print-signatures-wrapper {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+        margin-top: 18px !important;
+        padding-top: 4px !important;
+        page-break-inside: avoid !important;
+    }
+
+    .sig-block {
+        text-align: center !important;
+        width: 22% !important;
+    }
+
+    .sig-line {
+        border-top: 1.5px solid #0f172a !important;
+        width: 100% !important;
+        margin-bottom: 3px !important;
+    }
+
+    .sig-title {
+        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        text-transform: uppercase !important;
+    }
+
+    .sig-subtitle {
+        font-size: 6.5pt !important;
+        color: #64748b !important;
+    }
+
+    .sig-stamp-circle {
+        width: 48px !important;
+        height: 48px !important;
+        border: 1.5px dashed #2563eb !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 auto !important;
+        font-size: 5.5pt !important;
+        color: #2563eb !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+        line-height: 1.1 !important;
+        background: #eff6ff !important;
+    }
+
+    /* Security Footer */
+    .print-footer-security {
+        margin-top: 10px !important;
+        border-top: 1px solid #cbd5e1 !important;
+        padding-top: 4px !important;
+        font-size: 6.5pt !important;
+        color: #64748b !important;
+        page-break-inside: avoid !important;
+    }
+
+    .security-line {
+        display: flex !important;
+        justify-content: space-between !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        text-transform: uppercase !important;
+        margin-bottom: 2px !important;
+        letter-spacing: 0.4px !important;
+    }
+
+    .timestamp-line {
+        text-align: center !important;
+        color: #94a3b8 !important;
+        font-style: italic !important;
+    }
+}

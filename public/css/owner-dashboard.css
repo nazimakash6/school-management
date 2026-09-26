@@ -1,0 +1,23 @@
+/* Owner Dashboard Page Styles */
+
+.page-owner-dashboard {
+  /* Page-specific styles can be added here */
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.25rem;
+}
+
+.dashboard-grid > .col-span-3 { grid-column: span 3; }
+.dashboard-grid > .col-span-6 { grid-column: span 6; }
+
+@media (max-width: 1199px) {
+  .dashboard-grid > .col-span-3 { grid-column: span 6; }
+}
+
+@media (max-width: 767px) {
+  .dashboard-grid > .col-span-3,
+  .dashboard-grid > .col-span-6 { grid-column: span 12; }
+}

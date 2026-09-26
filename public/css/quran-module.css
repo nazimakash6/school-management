@@ -1,0 +1,56 @@
+/* Quran Module Custom Design System */
+
+.bg-purple-subtle { background-color: #f3e8ff !important; }
+.text-purple { color: #7e22ce !important; }
+.border-purple-subtle { border-color: #e9d5ff !important; }
+
+.bg-teal-subtle { background-color: #ccfbf1 !important; }
+.text-teal { color: #0f766e !important; }
+.border-teal-subtle { border-color: #99f6e4 !important; }
+
+.quran-stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 0.75rem;
+}
+.quran-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
+}
+
+.category-pill-btn {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    background-color: #fff;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.category-pill-btn:hover {
+    border-color: #cbd5e1;
+    background-color: #f8fafc;
+}
+
+.category-pill-btn.active {
+    border-color: #0d6efd;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+.progress-bar-hifz {
+    background: linear-gradient(90deg, #7e22ce 0%, #a855f7 100%);
+}
+
+.badge-category {
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35em 0.75em;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+}
