@@ -11,6 +11,12 @@ use Illuminate\Http\Request;
 class CertificateController extends Controller
 {
     public const CERTIFICATE_TYPES = [
+        'overall_performance' => [
+            'title'       => 'Overall Performance Certificate',
+            'description' => 'Comprehensive student report & progress card combining examination, discipline, skills, attendance & overall remarks.',
+            'icon'        => 'clipboard-check',
+            'color'       => 'primary',
+        ],
         'school_leaving' => [
             'title'       => 'School Leaving Certificate',
             'description' => 'Issued to students who have completed their studies and are leaving the school.',
@@ -103,25 +109,35 @@ class CertificateController extends Controller
         $sessionId   = trim((string) $request->get('academic_session_id', ''));
         $sessionName = trim((string) $request->get('academic_session', ''));
 
-        // Query Student model primarily for all students belonging to the class & session
-        $query = Student::select([
-                'id',
-                'admission_no',
-                'roll_no',
-                'date_of_birth',
-                'class_name',
-                'section_name',
-                'father_name',
-                'first_name',
-                'last_name',
-                'student_photo',
-                'academic_session_id',
-                'status',
-            ]);
+        $cleanClass = preg_replace('/^class\s+/i', '', $className);
 
-        if (!empty($className)) {
-            $query->where('class_name', $className);
-        }
+        // Helper to apply class filter flexibly
+        $applyClassFilter = function ($q) use ($className, $cleanClass) {
+            if (!empty($className)) {
+                $q->where(function ($sub) use ($className, $cleanClass) {
+                    $sub->where('class_name', $className)
+                        ->orWhere('class_name', 'Class ' . $cleanClass)
+                        ->orWhere('class_name', $cleanClass);
+                });
+            }
+        };
+
+        // 1. Primary Query on Student model
+        $query = Student::select([
+            'id',
+            'admission_no',
+            'roll_no',
+            'date_of_birth',
+            'class_name',
+            'section_name',
+            'father_name',
+            'first_name',
+            'last_name',
+            'academic_session_id',
+            'status',
+        ]);
+
+        $applyClassFilter($query);
 
         if (!empty($sessionId)) {
             $query->where(function ($q) use ($sessionId, $sessionName) {
@@ -142,7 +158,29 @@ class CertificateController extends Controller
             ->orderByRaw("TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')))")
             ->get();
 
-        // Fallback to Admission model if Student query returns empty
+        // 2. Fallback A: Query Student model WITHOUT restricting strictly to session if empty
+        if ($students->isEmpty() && !empty($className)) {
+            $queryNoSess = Student::select([
+                'id',
+                'admission_no',
+                'roll_no',
+                'date_of_birth',
+                'class_name',
+                'section_name',
+                'father_name',
+                'first_name',
+                'last_name',
+                'academic_session_id',
+                'status',
+            ]);
+            $applyClassFilter($queryNoSess);
+
+            $students = $queryNoSess
+                ->orderByRaw("TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')))")
+                ->get();
+        }
+
+        // 3. Fallback B: Fallback to Admission model if still empty
         if ($students->isEmpty() && !empty($className)) {
             $admQuery = Admission::select([
                 'id',
@@ -154,14 +192,10 @@ class CertificateController extends Controller
                 'father_name',
                 'first_name',
                 'last_name',
-                'student_photo',
                 'academic_session_id',
                 'admission_status as status',
-            ])->where('class_name', $className);
-
-            if (!empty($sessionId)) {
-                $admQuery->where('academic_session_id', $sessionId);
-            }
+            ]);
+            $applyClassFilter($admQuery);
 
             $students = $admQuery
                 ->orderByRaw("TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')))")
@@ -180,7 +214,7 @@ class CertificateController extends Controller
                 : '',
             'class_name'        => $s->class_name,
             'section_name'      => $s->section_name,
-            'student_photo_url' => $s->student_photo ? asset('storage/' . $s->student_photo) : null,
+            'student_photo_url' => isset($s->student_photo) && $s->student_photo ? asset('storage/' . $s->student_photo) : null,
             'academic_session'  => $s->academicSession ? $s->academicSession->session_name : '',
         ]);
 
@@ -252,6 +286,27 @@ class CertificateController extends Controller
             'teacher_remarks'     => $request->get('teacher_remarks', $request->get('remarks', '')),
             'principal_remarks'   => $request->get('principal_remarks', ''),
             'student_photo_url'   => $request->get('student_photo_url', ''),
+            'report_type'         => $request->get('report_type', 'Monthly'),
+            'focus_area'          => $request->get('focus_area', ''),
+            'performance_tracker' => $request->get('performance_tracker', []),
+            'skills_attributes'   => $request->get('skills_attributes', []),
+            'learning_highlights' => $request->get('learning_highlights', ''),
+            'areas_to_improve'    => $request->get('areas_to_improve', ''),
+            'attendance_total'    => $request->get('attendance_total', ''),
+            'attendance_present'  => $request->get('attendance_present', ''),
+            'attendance_absent'   => $request->get('attendance_absent', ''),
+            'attendance_pct'      => $request->get('attendance_pct', ''),
+            'academic_stars'      => $request->get('academic_stars', '5'),
+            'islamic_stars'       => $request->get('islamic_stars', '5'),
+            'personal_stars'      => $request->get('personal_stars', '5'),
+            'behaviour_stars'     => $request->get('behaviour_stars', '5'),
+            'cocurricular_stars'  => $request->get('cocurricular_stars', '5'),
+            'overall_progress'    => $request->get('overall_progress', 'GOOD'),
+            'parent_remarks'      => $request->get('parent_remarks', ''),
+            'action_plan'         => $request->get('action_plan', ''),
+            'subject_teacher'     => $request->get('subject_teacher', 'Subject Teacher'),
+            'parent_guardian'     => $request->get('parent_guardian', 'Parent / Guardian'),
+            'date_period'         => $request->get('date_period', $issueDate),
         ];
 
         return view("pages.admin.certificates.print.{$type}", compact('data', 'typeDetails'));

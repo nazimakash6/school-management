@@ -57,16 +57,18 @@
             @csrf
             <input type="hidden" name="type" value="{{ $type }}" />
 
-            {{-- Hidden fields populated by JS --}}
-            <input type="hidden" name="student_name" id="h_student_name" />
-            <input type="hidden" name="father_name" id="h_father_name" />
-            <input type="hidden" name="admission_no" id="h_admission_no" />
-            <input type="hidden" name="roll_no" id="h_roll_no" />
-            <input type="hidden" name="date_of_birth" id="h_dob" />
-            <input type="hidden" name="class_name" id="h_class_name" />
-            <input type="hidden" name="section" id="h_section" />
+            {{-- Hidden fields for experience/appreciation fallback --}}
+            @if ($type === 'experience' || $type === 'appreciation')
+                <input type="hidden" name="student_name" id="h_student_name" />
+                <input type="hidden" name="father_name" id="h_father_name" />
+                <input type="hidden" name="admission_no" id="h_admission_no" />
+                <input type="hidden" name="roll_no" id="h_roll_no" />
+                <input type="hidden" name="date_of_birth" id="h_dob" />
+                <input type="hidden" name="class_name" id="h_class_name" />
+                <input type="hidden" name="section" id="h_section" />
+                <input type="hidden" name="student_photo_url" id="h_student_photo_url" />
+            @endif
             <input type="hidden" name="session" id="session_input" />
-            <input type="hidden" name="student_photo_url" id="h_student_photo_url" />
 
             <div class="row g-4">
                 <div class="col-lg-8">
@@ -415,145 +417,118 @@
                             </div>
                         </div>
                     @else
-                        <!-- ─── STEP 1 & 2 FOR STUDENT CERTIFICATES: SELECT ACADEMIC SESSION & CLASS ──────────────────────────── -->
+                        <!-- ─── STEP 1: SELECT ACADEMIC SESSION, CLASS & REGISTERED STUDENT ──────────────────────────── -->
                         <div class="card border-0 shadow-sm rounded-3 mb-4">
-                            <div class="card-header bg-white py-3 border-bottom">
+                            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
                                 <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                                     <span class="step-badge">1</span>
-                                    Select Academic Session & Class
+                                    Select Academic Session, Class & Registered Student
                                 </h6>
+                                <span id="student_count" class="text-muted small"></span>
                             </div>
                             <div class="card-body p-4">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold text-dark"
-                                            >Academic Session <span class="text-danger">*</span></label
-                                        >
-                                        <select id="session_picker" class="form-select form-select-lg" required>
+                                <div class="row g-3 align-items-end">
+                                    <!-- 1. Academic Session -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Academic Session <span class="text-danger">*</span></label>
+                                        <select id="session_picker" class="form-select form-select-lg">
                                             <option value="">— Select Academic Session —</option>
                                             @foreach ($academicSessions as $sess)
-                                                <option value="{{ $sess->id }}" data-name="{{ $sess->session_name }}">
+                                                <option value="{{ $sess->id }}" data-name="{{ $sess->session_name }}" {{ $loop->first ? 'selected' : '' }}>
                                                     Academic Session {{ $sess->session_name }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold text-dark"
-                                            >Class <span class="text-danger">*</span></label
-                                        >
-                                        <select id="class_picker" class="form-select form-select-lg" required>
-                                            <option value="">— Select Class —</option>
+
+                                    <!-- 2. Select Class -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Select Class <span class="text-danger">*</span></label>
+                                        <select id="class_picker" class="form-select form-select-lg">
+                                            <option value="" selected>— Select Class —</option>
                                             @foreach ($classes as $cls)
                                                 <option value="{{ $cls }}">{{ $cls }}</option>
                                             @endforeach
                                         </select>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- ─── STEP 2: SEARCH & SELECT STUDENT DROPDOWN ────────────────── -->
-                        <div class="card border-0 shadow-sm rounded-3 mb-4" id="student_step" style="display: none">
-                            <div
-                                class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between"
-                            >
-                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                    <span class="step-badge">2</span>
-                                    Select Student Dropdown
-                                    <span
-                                        id="class_badge"
-                                        class="badge bg-primary bg-opacity-10 text-primary border ms-1"
-                                    ></span>
-                                </h6>
-                                <span id="student_count" class="text-muted small"></span>
-                            </div>
-                            <div class="card-body p-4">
-                                <!-- Loading spinner -->
-                                <div id="students_loading" class="text-center py-3" style="display: none">
-                                    <div class="spinner-border text-primary spinner-border-sm me-2"></div>
-                                    <span class="text-muted small">Loading students...</span>
-                                </div>
-
-                                <div id="student_select_wrapper" style="display: none">
-                                    <!-- Search Bar for Student Dropdown -->
-                                    <label class="form-label fw-semibold text-dark"
-                                        >Search Student
-                                        <span class="text-muted fw-normal"
-                                            >(filter list by name, father name, roll #)</span
-                                        ></label
-                                    >
-                                    <div class="input-group mb-3">
-                                        <span class="input-group-text bg-white"
-                                            ><i data-lucide="search" style="width: 0.95rem; height: 0.95rem"></i
-                                        ></span>
-                                        <input
-                                            type="text"
-                                            id="student_search_input"
-                                            class="form-control form-control-lg"
-                                            placeholder="Type student name, father name, or roll no to search..."
-                                        />
+                                    <!-- 3. Select Student Dropdown -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Select Student <span class="text-danger">*</span></label>
+                                        <select id="student_dropdown" class="form-select form-select-lg" disabled>
+                                            <option value="">— Select Class First —</option>
+                                        </select>
                                     </div>
 
-                                    <!-- Student Dropdown Select -->
-                                    <label class="form-label fw-semibold text-dark"
-                                        >Select Student <span class="text-danger">*</span></label
-                                    >
-                                    <select
-                                        id="student_dropdown"
-                                        class="form-select form-select-lg student-select-box"
-                                        size="5"
-                                    >
-                                        <option value="">— Select a student from list —</option>
-                                    </select>
-                                    <div class="form-text mt-1 text-muted">
-                                        Click any student from the dropdown list to select.
+                                    <!-- Search filter bar (appears when class selected) -->
+                                    <div class="col-12 mt-2" id="student_search_wrap" style="display: none;">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i data-lucide="search" style="width: 0.95rem; height: 0.95rem"></i></span>
+                                            <input
+                                                type="text"
+                                                id="student_search_input"
+                                                class="form-control"
+                                                placeholder="Type student name, father name, or roll no to filter student dropdown list..."
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div id="no_students" class="text-center py-4 text-muted small" style="display: none">
-                                    No students found for this selection.
+                                    <!-- Loading spinner -->
+                                    <div id="students_loading" class="col-12 text-center py-2" style="display: none">
+                                        <div class="spinner-border text-primary spinner-border-sm me-2"></div>
+                                        <span class="text-muted small">Loading students...</span>
+                                    </div>
+
+                                    <div id="no_students" class="col-12 text-center py-2 text-muted small" style="display: none">
+                                        No students found for this class & session.
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- ─── STEP 3: SELECTED STUDENT PREVIEW ─────────────── -->
-                        <div
-                            class="card border-0 shadow-sm rounded-3 mb-4 border-start border-success border-4"
-                            id="student_preview"
-                            style="display: none"
-                        >
-                            <div class="card-header bg-white py-3 border-bottom">
+                        <!-- ─── STEP 3: STUDENT PROFILE PARTICULARS (AUTO-FILLED OR EDITABLE) ─────────────── -->
+                        <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-primary border-4" id="student_preview_card">
+                            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
                                 <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                    <span class="step-badge" style="background: #22c55e">✓</span>
-                                    Selected Student Details
+                                    <span class="step-badge" style="background: #4f46e5">2</span>
+                                    Student Particulars & Profile Information
                                 </h6>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border">Auto-fills from dropdown or type manually</span>
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label text-muted small fw-semibold">Name of Student</label>
-                                        <div class="fw-bold text-dark fs-6" id="preview_name">—</div>
+                                        <label class="form-label fw-semibold text-dark">Student Full Name <span class="text-danger">*</span></label>
+                                        <input type="text" name="student_name" id="input_student_name" class="form-control form-control-lg fw-bold text-dark" placeholder="Type student full name or select from class above..." required />
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label text-muted small fw-semibold">Father's Name</label>
-                                        <div class="fw-bold text-dark fs-6" id="preview_father">—</div>
+                                        <label class="form-label fw-semibold text-dark">Father's Name</label>
+                                        <input type="text" name="father_name" id="input_father_name" class="form-control form-control-lg" placeholder="Type father's name..." />
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label text-muted small fw-semibold">Admission No.</label>
-                                        <div class="fw-semibold" id="preview_admno">—</div>
+                                        <label class="form-label fw-semibold text-dark">Class Name</label>
+                                        <input type="text" name="class_name" id="input_class_name" class="form-control" placeholder="e.g. Class 5th" />
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label text-muted small fw-semibold">Roll No.</label>
-                                        <div class="fw-semibold" id="preview_roll">—</div>
+                                        <label class="form-label fw-semibold text-dark">Section</label>
+                                        <input type="text" name="section" id="input_section" class="form-control" placeholder="e.g. A" />
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label text-muted small fw-semibold">Date of Birth</label>
-                                        <div class="fw-semibold" id="preview_dob">—</div>
+                                        <label class="form-label fw-semibold text-dark">Roll Number</label>
+                                        <input type="text" name="roll_no" id="input_roll_no" class="form-control" placeholder="e.g. 15" />
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label text-muted small fw-semibold">Class & Section</label>
-                                        <div class="fw-semibold" id="preview_class">—</div>
+                                        <label class="form-label fw-semibold text-dark">Admission No.</label>
+                                        <input type="text" name="admission_no" id="input_admission_no" class="form-control" placeholder="e.g. ADM-102" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Date of Birth</label>
+                                        <input type="text" name="date_of_birth" id="input_dob" class="form-control" placeholder="e.g. 12 Oct 2015" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Student Photo URL / Path</label>
+                                        <input type="text" name="student_photo_url" id="input_student_photo_url" class="form-control" placeholder="Auto-filled when student is selected from dropdown" />
                                     </div>
                                 </div>
                             </div>
@@ -636,26 +611,303 @@
                                         </div>
                                     @endif
 
-                                    <div class="col-12"><hr class="my-1" /></div>
+                                    @if ($type === 'overall_performance')
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Report Type</label>
+                                            <select name="report_type" class="form-select">
+                                                <option value="Daily">Daily Report</option>
+                                                <option value="Weekly">Weekly Report</option>
+                                                <option value="Monthly" selected>Monthly Progress Card</option>
+                                                <option value="Term">Term / Quarterly Card</option>
+                                                <option value="Other">Other / Special</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Date / Month Period</label>
+                                            <input type="text" name="date_period" class="form-control" value="{{ date('F Y') }}" placeholder="e.g. September 2026 / Term 1" />
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold text-dark">Focus Area / Special Subject</label>
+                                            <input type="text" name="focus_area" class="form-control" placeholder="e.g. All Subjects & Behaviour" value="General Academics & Character" />
+                                        </div>
 
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold text-dark">Class Teacher Name</label>
-                                        <input
-                                            type="text"
-                                            name="class_teacher"
-                                            class="form-control"
-                                            placeholder="Teacher's name"
-                                        />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold text-dark">Principal Name</label>
-                                        <input
-                                            type="text"
-                                            name="principal"
-                                            class="form-control"
-                                            placeholder="Principal's name"
-                                        />
-                                    </div>
+                                        <!-- 1. PERFORMANCE TRACKER TABLE -->
+                                        <div class="col-12 mt-3">
+                                            <div class="border rounded-3 p-3 bg-light">
+                                                <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                                                    <i data-lucide="bar-chart-2" style="width:1.1rem;height:1.1rem;" class="text-primary"></i>
+                                                    Performance Tracker (Subject-Wise Assessment)
+                                                </h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered bg-white align-middle mb-0" style="font-size:0.875rem;">
+                                                        <thead class="table-dark">
+                                                            <tr>
+                                                                <th style="width:25%;">Subject / Area</th>
+                                                                <th style="width:45%;" class="text-center">Rating / Grade</th>
+                                                                <th style="width:30%;">Remarks</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @php
+                                                                $subjectsList = ['Quran', 'Islamic Studies', 'English', 'Urdu', 'Mathematics', 'Science', 'Social Studies', 'Computer', 'General Knowledge', 'Other'];
+                                                            @endphp
+                                                            @foreach($subjectsList as $sIdx => $subj)
+                                                            <tr>
+                                                                <td class="fw-semibold text-dark">
+                                                                    {{ $subj }}
+                                                                    <input type="hidden" name="performance_tracker[{{ $sIdx }}][subject]" value="{{ $subj }}">
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex justify-content-around align-items-center">
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="performance_tracker[{{ $sIdx }}][rating]" id="pt_{{ $sIdx }}_ex" value="excellent" checked>
+                                                                            <label class="form-check-label text-success fw-bold" for="pt_{{ $sIdx }}_ex">★ Excellent</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="performance_tracker[{{ $sIdx }}][rating]" id="pt_{{ $sIdx }}_gd" value="good">
+                                                                            <label class="form-check-label text-primary fw-semibold" for="pt_{{ $sIdx }}_gd">👍 Good</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="performance_tracker[{{ $sIdx }}][rating]" id="pt_{{ $sIdx }}_av" value="average">
+                                                                            <label class="form-check-label text-warning" for="pt_{{ $sIdx }}_av">- Average</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="performance_tracker[{{ $sIdx }}][rating]" id="pt_{{ $sIdx }}_ni" value="needs_improvement">
+                                                                            <label class="form-check-label text-danger" for="pt_{{ $sIdx }}_ni">! Needs Imp.</label>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="performance_tracker[{{ $sIdx }}][remarks]" class="form-control form-control-sm" placeholder="Subject remarks..." value="{{ $subj === 'Quran' ? 'Fluent recitation' : '' }}">
+                                                                </td>
+                                                            </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. SKILLS & ATTRIBUTES TABLE -->
+                                        <div class="col-12 mt-3">
+                                            <div class="border rounded-3 p-3 bg-light">
+                                                <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                                                    <i data-lucide="smile" style="width:1.1rem;height:1.1rem;" class="text-success"></i>
+                                                    Skills & Attributes (Personal & Social Development)
+                                                </h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered bg-white align-middle mb-0" style="font-size:0.875rem;">
+                                                        <thead class="table-dark">
+                                                            <tr>
+                                                                <th style="width:25%;">Skill Area</th>
+                                                                <th style="width:45%;" class="text-center">Rating / Grade</th>
+                                                                <th style="width:30%;">Remarks</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @php
+                                                                $skillsList = ['Attention & Participation', 'Behaviour', 'Assignments', 'Punctuality', 'Neatness & Presentation', 'Confidence', 'Co-operation', 'Respect for Others'];
+                                                            @endphp
+                                                            @foreach($skillsList as $skIdx => $skItem)
+                                                            <tr>
+                                                                <td class="fw-semibold text-dark">
+                                                                    {{ $skItem }}
+                                                                    <input type="hidden" name="skills_attributes[{{ $skIdx }}][skill]" value="{{ $skItem }}">
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex justify-content-around align-items-center">
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="skills_attributes[{{ $skIdx }}][rating]" id="sk_{{ $skIdx }}_ex" value="excellent" checked>
+                                                                            <label class="form-check-label text-success fw-bold" for="sk_{{ $skIdx }}_ex">★ Excellent</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="skills_attributes[{{ $skIdx }}][rating]" id="sk_{{ $skIdx }}_gd" value="good">
+                                                                            <label class="form-check-label text-primary fw-semibold" for="sk_{{ $skIdx }}_gd">👍 Good</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="skills_attributes[{{ $skIdx }}][rating]" id="sk_{{ $skIdx }}_av" value="average">
+                                                                            <label class="form-check-label text-warning" for="sk_{{ $skIdx }}_av">- Average</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline mb-0">
+                                                                            <input class="form-check-input" type="radio" name="skills_attributes[{{ $skIdx }}][rating]" id="sk_{{ $skIdx }}_ni" value="needs_improvement">
+                                                                            <label class="form-check-label text-danger" for="sk_{{ $skIdx }}_ni">! Needs Imp.</label>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="skills_attributes[{{ $skIdx }}][remarks]" class="form-control form-control-sm" placeholder="Skill remarks..." value="Active & courteous">
+                                                                </td>
+                                                            </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3. LEARNING HIGHLIGHTS & AREAS TO IMPROVE -->
+                                        <div class="col-md-6 mt-3">
+                                            <label class="form-label fw-semibold text-dark">Learning Highlights</label>
+                                            <textarea name="learning_highlights" class="form-control" rows="3" placeholder="e.g. Excellent memory in Tajweed Quran, Quick solver in Mathematics, Active team leader.">Shows great interest in Quranic recitation & Mathematics. Consistently completes home assignments on time.</textarea>
+                                        </div>
+                                        <div class="col-md-6 mt-3">
+                                            <label class="form-label fw-semibold text-dark">Areas to Improve</label>
+                                            <textarea name="areas_to_improve" class="form-control" rows="3" placeholder="e.g. Focus on English handwriting & regular library reading.">Needs slight improvement in English vocabulary & handwriting neatness.</textarea>
+                                        </div>
+
+                                        <!-- 4. ATTENDANCE OVERVIEW -->
+                                        <div class="col-12 mt-3">
+                                            <div class="border rounded-3 p-3 bg-light">
+                                                <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                                                    <i data-lucide="calendar" style="width:1.1rem;height:1.1rem;" class="text-info"></i>
+                                                    Attendance Overview
+                                                </h6>
+                                                <div class="row g-2">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small fw-semibold text-muted">Total Working Days</label>
+                                                        <input type="number" name="attendance_total" id="att_total" class="form-control" value="25">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small fw-semibold text-muted">Present Days</label>
+                                                        <input type="number" name="attendance_present" id="att_present" class="form-control" value="24">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small fw-semibold text-muted">Absent Days</label>
+                                                        <input type="number" name="attendance_absent" id="att_absent" class="form-control" value="1">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small fw-semibold text-muted">Attendance %</label>
+                                                        <input type="text" name="attendance_pct" id="att_pct" class="form-control fw-bold text-success" value="96%">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 5. PROGRESS SUMMARY (STARS & BADGE) -->
+                                        <div class="col-12 mt-3">
+                                            <div class="border rounded-3 p-3 bg-light">
+                                                <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                                                    <i data-lucide="star" style="width:1.1rem;height:1.1rem;" class="text-warning"></i>
+                                                    Progress Summary (Overall Category Ratings)
+                                                </h6>
+                                                <div class="row g-3">
+                                                    <div class="col-md-2.4 col-6">
+                                                        <label class="form-label small fw-semibold text-muted">Academic Rating</label>
+                                                        <select name="academic_stars" class="form-select form-select-sm">
+                                                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                                                            <option value="4">★★★★☆ (4 Stars)</option>
+                                                            <option value="3">★★★☆☆ (3 Stars)</option>
+                                                            <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2.4 col-6">
+                                                        <label class="form-label small fw-semibold text-muted">Islamic Development</label>
+                                                        <select name="islamic_stars" class="form-select form-select-sm">
+                                                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                                                            <option value="4">★★★★☆ (4 Stars)</option>
+                                                            <option value="3">★★★☆☆ (3 Stars)</option>
+                                                            <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2.4 col-6">
+                                                        <label class="form-label small fw-semibold text-muted">Personal Development</label>
+                                                        <select name="personal_stars" class="form-select form-select-sm">
+                                                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                                                            <option value="4">★★★★☆ (4 Stars)</option>
+                                                            <option value="3">★★★☆☆ (3 Stars)</option>
+                                                            <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2.4 col-6">
+                                                        <label class="form-label small fw-semibold text-muted">Behaviour & Discipline</label>
+                                                        <select name="behaviour_stars" class="form-select form-select-sm">
+                                                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                                                            <option value="4">★★★★☆ (4 Stars)</option>
+                                                            <option value="3">★★★☆☆ (3 Stars)</option>
+                                                            <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2.4 col-6">
+                                                        <label class="form-label small fw-semibold text-muted">Co-Curricular</label>
+                                                        <select name="cocurricular_stars" class="form-select form-select-sm">
+                                                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                                                            <option value="4">★★★★☆ (4 Stars)</option>
+                                                            <option value="3">★★★☆☆ (3 Stars)</option>
+                                                            <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label fw-semibold text-dark">Overall Progress Status</label>
+                                                        <select name="overall_progress" class="form-select">
+                                                            <option value="EXCELLENT" selected>EXCELLENT</option>
+                                                            <option value="GOOD">GOOD</option>
+                                                            <option value="SATISFACTORY">SATISFACTORY</option>
+                                                            <option value="NEEDS IMPROVEMENT">NEEDS IMPROVEMENT</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 6. REMARKS & ACTION PLAN -->
+                                        <div class="col-md-4 mt-3">
+                                            <label class="form-label fw-semibold text-dark">Teacher's Remarks</label>
+                                            <textarea name="teacher_remarks" class="form-control" rows="3" placeholder="Teacher comments...">Demonstrates exemplary academic performance and excellent moral conduct in school.</textarea>
+                                        </div>
+                                        <div class="col-md-4 mt-3">
+                                            <label class="form-label fw-semibold text-dark">Parent's Remarks</label>
+                                            <textarea name="parent_remarks" class="form-control" rows="3" placeholder="Parent feedback / acknowledgment...">Very satisfied with student progress and school environment.</textarea>
+                                        </div>
+                                        <div class="col-md-4 mt-3">
+                                            <label class="form-label fw-semibold text-dark">Action Plan / Next Steps</label>
+                                            <textarea name="action_plan" class="form-control" rows="3" placeholder="Next plan & goals...">Continue reading practice, participate in upcoming Tajweed competition & sports gala.</textarea>
+                                        </div>
+
+                                        <!-- 7. SIGNATURES -->
+                                        <div class="col-12"><hr class="my-2" /></div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Subject Teacher</label>
+                                            <input type="text" name="subject_teacher" class="form-control" value="Subject Teacher" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Class Teacher</label>
+                                            <input type="text" name="class_teacher" class="form-control" value="Class Teacher" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Parent / Guardian</label>
+                                            <input type="text" name="parent_guardian" class="form-control" value="Parent / Guardian" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold text-dark">Principal Name</label>
+                                            <input type="text" name="principal" class="form-control" value="Principal" />
+                                        </div>
+                                    @else
+                                        <div class="col-12"><hr class="my-1" /></div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold text-dark">Class Teacher Name</label>
+                                            <input
+                                                type="text"
+                                                name="class_teacher"
+                                                class="form-control"
+                                                placeholder="Teacher's name"
+                                            />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold text-dark">Principal Name</label>
+                                            <input
+                                                type="text"
+                                                name="principal"
+                                                class="form-control"
+                                                placeholder="Principal's name"
+                                            />
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -895,17 +1147,19 @@
                 }
 
                 if (!className || !sessionId) {
-                    if (studentStep) studentStep.style.display = 'none';
+                    if (studentDropdown) {
+                        studentDropdown.disabled = true;
+                        studentDropdown.innerHTML = '<option value="">— Select Class First —</option>';
+                    }
+                    const sWrap = document.getElementById('student_search_wrap');
+                    if (sWrap) sWrap.style.display = 'none';
                     clearStudentPreview();
                     return;
                 }
 
                 if (studentDropdown) studentDropdown.innerHTML = '';
-                if (studentSelectWrapper) studentSelectWrapper.style.display = 'none';
                 if (noStudents) noStudents.style.display = 'none';
                 if (studentsLoading) studentsLoading.style.display = 'block';
-                if (studentStep) studentStep.style.display = 'block';
-                if (classBadge) classBadge.textContent = `${sessionName} — ${className}`;
                 if (studentSearchInput) studentSearchInput.value = '';
                 clearStudentPreview();
 
@@ -925,11 +1179,17 @@
                                 noStudents.style.display = 'block';
                             }
                             if (studentCount) studentCount.textContent = '0 students';
+                            if (studentDropdown) {
+                                studentDropdown.disabled = true;
+                                studentDropdown.innerHTML = '<option value="">— No students in this class —</option>';
+                            }
                             return;
                         }
 
                         if (studentCount) studentCount.textContent = students.length + ' student' + (students.length > 1 ? 's' : '');
-                        if (studentSelectWrapper) studentSelectWrapper.style.display = 'block';
+                        const sWrap = document.getElementById('student_search_wrap');
+                        if (sWrap) sWrap.style.display = 'block';
+                        if (studentDropdown) studentDropdown.disabled = false;
                         populateStudentDropdown(students);
                     })
                     .catch(() => {
@@ -944,8 +1204,13 @@
             if (sessionPicker) sessionPicker.addEventListener('change', loadStudents);
             if (classPicker) classPicker.addEventListener('change', loadStudents);
 
+            if (sessionPicker && classPicker && sessionPicker.value && classPicker.value) {
+                loadStudents();
+            }
+
             // ── Populate dropdown list ────────────────────────────────────
             function populateStudentDropdown(students) {
+                if (!studentDropdown) return;
                 studentDropdown.innerHTML = '';
 
                 if (!students.length) {
@@ -959,8 +1224,9 @@
                 // Placeholder option
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = '— Click a student below to select —';
+                placeholder.textContent = `— Select Student (${students.length} found) —`;
                 placeholder.disabled = true;
+                placeholder.selected = true;
                 studentDropdown.appendChild(placeholder);
 
                 students.forEach((s) => {
@@ -1011,15 +1277,28 @@
                     return;
                 }
 
-                // ── Populate ALL hidden form fields ──
-                document.getElementById('h_student_name').value = s.student_name || '';
-                document.getElementById('h_father_name').value = s.father_name || '';
-                document.getElementById('h_admission_no').value = s.admission_no || '';
-                document.getElementById('h_roll_no').value = s.roll_no || '';
-                document.getElementById('h_dob').value = s.date_of_birth || '';
-                document.getElementById('h_class_name').value = s.class_name || '';
-                document.getElementById('h_section').value = s.section_name || '';
-                document.getElementById('h_student_photo_url').value = s.student_photo_url || '';
+                // ── Populate ALL form fields (both visible and hidden) ──
+                const inpName  = document.getElementById('input_student_name');
+                const inpFath  = document.getElementById('input_father_name');
+                const inpAdm   = document.getElementById('input_admission_no');
+                const inpRoll  = document.getElementById('input_roll_no');
+                const inpDob   = document.getElementById('input_dob');
+                const inpClass = document.getElementById('input_class_name');
+                const inpSec   = document.getElementById('input_section');
+                const inpPhoto = document.getElementById('input_student_photo_url');
+
+                if (inpName)  inpName.value  = s.student_name || '';
+                if (inpFath)  inpFath.value  = s.father_name || '';
+                if (inpAdm)   inpAdm.value   = s.admission_no || '';
+                if (inpRoll)  inpRoll.value  = s.roll_no || '';
+                if (inpDob)   inpDob.value   = s.date_of_birth || '';
+                if (inpClass) inpClass.value = s.class_name || '';
+                if (inpSec)   inpSec.value   = s.section_name || '';
+                if (inpPhoto) inpPhoto.value = s.student_photo_url || '';
+
+                // Fallback for hidden fields
+                if (document.getElementById('h_student_name')) document.getElementById('h_student_name').value = s.student_name || '';
+                if (document.getElementById('h_father_name'))  document.getElementById('h_father_name').value  = s.father_name || '';
 
                 if (isAppreciationType) {
                     const recipName  = document.getElementById('app_recipient_name');
@@ -1033,20 +1312,6 @@
                     }
                 }
 
-                // ── Update student preview card ──
-                const statusStr = s.status ? ` (${s.status})` : '';
-                if (document.getElementById('preview_name'))  document.getElementById('preview_name').textContent = (s.student_name || '—') + statusStr;
-                if (document.getElementById('preview_father')) document.getElementById('preview_father').textContent = s.father_name || '—';
-                if (document.getElementById('preview_admno'))  document.getElementById('preview_admno').textContent = s.admission_no || '—';
-                if (document.getElementById('preview_roll'))   document.getElementById('preview_roll').textContent = s.roll_no || '—';
-                if (document.getElementById('preview_dob'))    document.getElementById('preview_dob').textContent = s.date_of_birth || '—';
-                if (document.getElementById('preview_class')) {
-                    document.getElementById('preview_class').textContent =
-                        (s.class_name || '') + (s.section_name ? ' — ' + s.section_name : '');
-                }
-
-                if (studentPreview) studentPreview.style.display = 'block';
-                if (studentPreview) studentPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 if (generateBtn) generateBtn.disabled = false;
 
                 // Highlight the selected option visually
@@ -1056,6 +1321,20 @@
             if (studentDropdown) {
                 studentDropdown.addEventListener('change', handleStudentSelect);
                 studentDropdown.addEventListener('click', handleStudentSelect);
+            }
+
+            // Listen to direct manual typing in Student Name input
+            const inpStudentName = document.getElementById('input_student_name');
+            if (inpStudentName) {
+                // If there's already a value on page load
+                if (inpStudentName.value.trim() !== '' && generateBtn) {
+                    generateBtn.disabled = false;
+                }
+                inpStudentName.addEventListener('input', function () {
+                    if (generateBtn) {
+                        generateBtn.disabled = !this.value.trim();
+                    }
+                });
             }
 
             // ── Form submit guard: ensure recipient/student name is filled ─────────
@@ -1071,21 +1350,22 @@
                     }
                     return;
                 }
-                const studentName = document.getElementById('h_student_name')
-                    ? document.getElementById('h_student_name').value.trim()
-                    : '';
+                const inpN = document.getElementById('input_student_name');
+                const hidN = document.getElementById('h_student_name');
+                const studentName = (inpN && inpN.value.trim()) ? inpN.value.trim() : (hidN ? hidN.value.trim() : '');
                 if (!studentName) {
                     e.preventDefault();
-                    alert('⚠️ Please select a student first before generating the certificate.');
-                    if (studentStep) studentStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    alert('⚠️ Please enter or select a Student Name before generating the certificate.');
+                    if (inpN) {
+                        inpN.focus();
+                        inpN.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                     return false;
                 }
             });
 
             // ── Clear helper ─────────────────────────────────────────────
             function clearStudentPreview() {
-                if (studentPreview) studentPreview.style.display = 'none';
-                if (generateBtn) generateBtn.disabled = true;
                 if (studentDropdown) studentDropdown.style.borderColor = '';
 
                 [
