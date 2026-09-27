@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('student_skills', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
+            $table->foreignId('academic_session_id')->nullable()->constrained('academic_sessions')->onDelete('set null');
             $table->foreignId('student_class_id')->nullable()->constrained('student_classes')->onDelete('cascade');
             $table->date('evaluation_date');
             $table->string('skill_category')->default('IT & Technology');
@@ -24,9 +25,8 @@ return new class extends Migration
             $table->decimal('obtained_score', 8, 2)->default(0.00);
             $table->decimal('star_rating', 3, 1)->default(0.0);
             $table->string('badge_level')->default('Proficient');
-            $table->string('certificate_code')->nullable();
             $table->text('instructor_notes')->nullable();
-            $table->string('image_proof')->nullable();
+            $table->json('skills_data')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });

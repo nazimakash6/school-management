@@ -277,7 +277,7 @@
                                     {{-- Actions --}}
                                     <td class="pe-3 text-end">
                                         <div class="btn-group btn-group-sm">
-                                            <button type="button" class="btn btn-light border text-primary" title="Assign Student" onclick="openQuickAssignModal({{ $route->id }}, '{{ addslashes($route->route_title) }}', {{ $route->fare_amount }})">
+                                            <button type="button" class="btn btn-light border text-primary" title="Assign Student" onclick="openQuickAssignModal({{ $route->id }}, '{{ addslashes($route->route_title) }}', {{ $route->fare_amount ?? 0 }})">
                                                 <i data-lucide="user-plus" style="width:0.9rem;height:0.9rem;"></i>
                                             </button>
                                             <a href="{{ route('transport.show', $route->id) }}" class="btn btn-light border" title="View Details & Roster">
@@ -613,16 +613,43 @@
     function openQuickAssignModal(routeId, routeTitle, fare) {
         const select = document.getElementById('assignRouteSelect');
         if (select) {
+            let opt = select.querySelector(`option[value="${routeId}"]`);
+            if (!opt && routeId) {
+                opt = document.createElement('option');
+                opt.value = routeId;
+                opt.textContent = routeTitle || `Route #${routeId}`;
+                if (fare) {
+                    opt.setAttribute('data-fare', fare);
+                }
+                select.appendChild(opt);
+            }
             select.value = routeId;
+            updateDefaultFare(select);
         }
         const fareInput = document.getElementById('assignMonthlyFareInput');
-        if (fareInput) {
+        if (fareInput && fare !== undefined && fare !== null) {
             fareInput.value = fare;
         }
         const modalEl = document.getElementById('assignStudentModal');
         if (modalEl) {
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal.show();
+            if (window.bootstrap && window.bootstrap.Modal) {
+                const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $(modalEl).modal('show');
+            } else {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.setAttribute('data-bs-toggle', 'modal');
+                btn.setAttribute('data-bs-target', '#assignStudentModal');
+                btn.style.display = 'none';
+                document.body.appendChild(btn);
+                btn.click();
+                btn.remove();
+            }
         }
     }
 

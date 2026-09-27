@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Staff;
 use App\Models\Student;
@@ -79,7 +80,7 @@ class TransportController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        $availableRoutes = Transport::where('status', 'Active')->get();
+        $availableRoutes = Transport::orderBy('route_title')->get();
 
         // Fetch Sessions & Classes for Assign Student Modal
         $academicSessions = AcademicSession::where('status', 'Active')->orderBy('start_date', 'desc')->get();
@@ -88,16 +89,9 @@ class TransportController extends Controller
         }
         $activeSession = AcademicSession::where('status', 'Active')->first() ?? $academicSessions->first();
 
-        $classNames = Student::where('status', 'active')
-            ->when($activeSession, fn($q) => $q->where('academic_session_id', $activeSession->id))
-            ->whereNotNull('class_name')
-            ->distinct()
-            ->pluck('class_name');
-
-        if ($classNames->isEmpty()) {
-            $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
-        } else {
-            $classes = StudentClass::whereIn('name', $classNames)->where('status', 'active')->orderBy('name')->get();
+        $classes = StudentClass::where('status', 'active')->orderBy('name')->get();
+        if ($classes->isEmpty()) {
+            $classes = StudentClass::orderBy('name')->get();
         }
 
         $firstClass = $classes->first();
@@ -107,6 +101,10 @@ class TransportController extends Controller
             ->when($firstClass, fn($q) => $q->where('class_name', $firstClass->name))
             ->orderBy('first_name')
             ->get();
+
+        if ($students->isEmpty()) {
+            $students = Student::where('status', 'active')->orderBy('first_name')->limit(50)->get();
+        }
 
         return view('pages.admin.transport.index', compact(
             'routes', 'roster', 'stats', 'drivers', 'availableRoutes', 'students',
@@ -133,17 +131,22 @@ class TransportController extends Controller
             'vehicle_number'    => 'required|string|max:100',
             'vehicle_model'     => 'nullable|string|max:255',
             'vehicle_type'      => 'required|string|max:50',
-            'vehicle_ownership' => 'required|string|max:50',
-            'vehicle_capacity'  => 'required|integer|min:1',
+            'vehicle_ownership' => 'nullable|string|max:50',
+            'vehicle_capacity'  => 'nullable|integer|min:1',
             'driver_id'         => 'nullable|exists:staff,id',
             'driver_name'       => 'nullable|string|max:255',
             'driver_contact'    => 'nullable|string|max:100',
             'driver_license'    => 'nullable|string|max:100',
-            'fare_amount'       => 'required|numeric|min:0',
+            'fare_amount'       => 'nullable|numeric|min:0',
             'pickup_stops'      => 'nullable|string',
-            'status'            => 'required|string|max:50',
+            'status'            => 'nullable|string|max:50',
             'note'              => 'nullable|string',
         ]);
+
+        $validated['vehicle_ownership'] = $validated['vehicle_ownership'] ?? 'School Owned';
+        $validated['vehicle_capacity']  = $validated['vehicle_capacity'] ?? 30;
+        $validated['fare_amount']       = $validated['fare_amount'] ?? 0.00;
+        $validated['status']            = $validated['status'] ?? 'Active';
 
         if (!empty($validated['driver_id'])) {
             $staff = Staff::find($validated['driver_id']);
@@ -196,17 +199,22 @@ class TransportController extends Controller
             'vehicle_number'    => 'required|string|max:100',
             'vehicle_model'     => 'nullable|string|max:255',
             'vehicle_type'      => 'required|string|max:50',
-            'vehicle_ownership' => 'required|string|max:50',
-            'vehicle_capacity'  => 'required|integer|min:1',
+            'vehicle_ownership' => 'nullable|string|max:50',
+            'vehicle_capacity'  => 'nullable|integer|min:1',
             'driver_id'         => 'nullable|exists:staff,id',
             'driver_name'       => 'nullable|string|max:255',
             'driver_contact'    => 'nullable|string|max:100',
             'driver_license'    => 'nullable|string|max:100',
-            'fare_amount'       => 'required|numeric|min:0',
+            'fare_amount'       => 'nullable|numeric|min:0',
             'pickup_stops'      => 'nullable|string',
-            'status'            => 'required|string|max:50',
+            'status'            => 'nullable|string|max:50',
             'note'              => 'nullable|string',
         ]);
+
+        $validated['vehicle_ownership'] = $validated['vehicle_ownership'] ?? 'School Owned';
+        $validated['vehicle_capacity']  = $validated['vehicle_capacity'] ?? 30;
+        $validated['fare_amount']       = $validated['fare_amount'] ?? 0.00;
+        $validated['status']            = $validated['status'] ?? 'Active';
 
         if (!empty($validated['driver_id'])) {
             $staff = Staff::find($validated['driver_id']);

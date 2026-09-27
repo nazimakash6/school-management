@@ -14,6 +14,7 @@ class StudentSkill extends Model
 
     protected $fillable = [
         'student_id',
+        'academic_session_id',
         'student_class_id',
         'evaluation_date',
         'skill_category',
@@ -24,9 +25,8 @@ class StudentSkill extends Model
         'obtained_score',
         'star_rating',
         'badge_level',
-        'certificate_code',
         'instructor_notes',
-        'image_proof',
+        'skills_data',
         'created_by',
     ];
 
@@ -35,11 +35,17 @@ class StudentSkill extends Model
         'total_score'     => 'float',
         'obtained_score'  => 'float',
         'star_rating'     => 'float',
+        'skills_data'     => 'array',
     ];
 
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class, 'student_id');
+    }
+
+    public function academicSession(): BelongsTo
+    {
+        return $this->belongsTo(AcademicSession::class, 'academic_session_id');
     }
 
     public function studentClass(): BelongsTo
@@ -50,6 +56,30 @@ class StudentSkill extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get structured array of all skills in this evaluation
+     */
+    public function getSkillsListAttribute(): array
+    {
+        if (!empty($this->skills_data) && is_array($this->skills_data)) {
+            return $this->skills_data;
+        }
+
+        return [
+            [
+                'skill_name'         => $this->skill_name,
+                'skill_category'     => $this->skill_category,
+                'assessment_type'    => $this->assessment_type,
+                'performance_period' => $this->performance_period,
+                'total_score'        => $this->total_score,
+                'obtained_score'     => $this->obtained_score,
+                'star_rating'        => $this->star_rating,
+                'badge_level'        => $this->badge_level,
+                'instructor_notes'   => $this->instructor_notes,
+            ]
+        ];
     }
 
     /**
@@ -85,19 +115,5 @@ class StudentSkill extends Model
         if ($stars >= 3.0) return 'bg-info text-dark';
         if ($stars >= 2.0) return 'bg-secondary text-white';
         return 'bg-danger text-white';
-    }
-
-    /**
-     * Image Proof URL helper
-     */
-    public function getImageProofUrlAttribute(): ?string
-    {
-        if (!$this->image_proof) {
-            return null;
-        }
-        if (str_starts_with($this->image_proof, 'http://') || str_starts_with($this->image_proof, 'https://')) {
-            return $this->image_proof;
-        }
-        return asset('storage/' . $this->image_proof);
     }
 }

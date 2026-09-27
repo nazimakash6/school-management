@@ -1,5 +1,6 @@
 @php
     $u = auth()->user();
+    if (!$u) return;
 @endphp
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
@@ -131,7 +132,7 @@
                                 <a
                                     href="{{ route('staff.index') }}"
                                     target="_self"
-                                    class="sidebar-link {{ request()->routeIs('staff.index') ? 'active' : '' }}"
+                                    class="sidebar-link {{ request()->routeIs('staff.*') ? 'active' : '' }}"
                                     ><i data-lucide="briefcase" class="sidebar-link-icon"></i
                                     ><span class="sidebar-link-text">Staff</span></a
                                 >
@@ -197,7 +198,7 @@
             <!-- School Setup Section -->
             @if ($u->hasPermission('school_info.manage') || $u->hasPermission('academic_sessions.manage') || $u->hasPermission('classes.manage') || $u->hasPermission('subjects.manage') || $u->hasPermission('groups.manage') || $u->hasPermission('houses.manage'))
                 <li
-                    class="sidebar-section-group {{ request()->routeIs('school-info.*', 'academic-sessions.*', 'classes.*', 'subjects.*', 'groups.*', 'houses.*') ? 'open' : '' }}"
+                    class="sidebar-section-group {{ request()->routeIs('school-info.*', 'academic-sessions.*', 'classes.*', 'subjects.*', 'subject-types.*', 'groups.*', 'houses.*') ? 'open' : '' }}"
                     data-section="school-setup"
                 >
                     <div class="sidebar-section-header">
@@ -391,9 +392,9 @@
             @endif
 
             <!-- Operations Section -->
-            @if ($u->hasPermission('inventory.manage') || $u->hasPermission('library.manage') || $u->hasPermission('transport.manage') || $u->hasPermission('skills_institute.manage') || $u->hasPermission('certificates.manage') || $u->hasPermission('id_cards.manage'))
+            @if ($u->hasPermission('inventory.manage') || $u->hasPermission('library.manage') || $u->hasPermission('transport.manage'))
                 <li
-                    class="sidebar-section-group {{ request()->routeIs('inventory.*', 'library.*', 'transport.*', 'skills-institute.*', 'certificates.*', 'id-cards.*') ? 'open' : '' }}"
+                    class="sidebar-section-group {{ request()->routeIs('inventory.*', 'library.*', 'transport.*') ? 'open' : '' }}"
                     data-section="operations"
                 >
                     <div class="sidebar-section-header">
@@ -434,29 +435,6 @@
                                     class="sidebar-link {{ request()->routeIs('transport.*') ? 'active' : '' }}"
                                     ><i data-lucide="bus" class="sidebar-link-icon"></i
                                     ><span class="sidebar-link-text">Transport</span></a
-                                >
-                            </li>
-                        @endif
-                        @if ($u->hasPermission('skills_institute.manage'))
-                            <li class="sidebar-item">
-                                <a
-                                    href="{{ route('skills-institute.index') }}"
-                                    target="_self"
-                                    class="sidebar-link {{ request()->routeIs('skills-institute.*') ? 'active' : '' }}"
-                                    ><i data-lucide="award" class="sidebar-link-icon"></i
-                                    ><span class="sidebar-link-text">Skills Institute</span></a
-                                >
-                            </li>
-                        @endif
-
-                        @if ($u->hasPermission('id_cards.manage'))
-                            <li class="sidebar-item">
-                                <a
-                                    href="{{ route('id-cards.index') }}"
-                                    target="_self"
-                                    class="sidebar-link {{ request()->routeIs('id-cards.*') ? 'active' : '' }}"
-                                    ><i data-lucide="id-card" class="sidebar-link-icon"></i
-                                    ><span class="sidebar-link-text">ID Cards</span></a
                                 >
                             </li>
                         @endif
@@ -532,9 +510,9 @@
             @endif
 
             <!-- Reports & Settings Section -->
-            @if ($u->hasPermission('audit_logs.view') || $u->hasPermission('reports.view') || $u->hasPermission('settings.manage'))
+            @if ($u->hasPermission('discipline.manage') || $u->hasPermission('certificates.manage') || $u->hasPermission('skills_institute.manage') || $u->hasPermission('id_cards.manage') || $u->hasPermission('audit_logs.view') || $u->hasPermission('reports.view') || $u->hasPermission('settings.manage'))
                 <li
-                    class="sidebar-section-group {{ request()->routeIs('audit-logs.*', 'custom-settings.*') ? 'open' : '' }}"
+                    class="sidebar-section-group {{ request()->routeIs('discipline.*', 'certificates.*', 'skills-institute.*', 'id-cards.*', 'audit-logs.*', 'custom-settings.*') ? 'open' : '' }}"
                     data-section="reports-settings"
                 >
                     <div class="sidebar-section-header">
@@ -564,6 +542,29 @@
                                     class="sidebar-link {{ request()->routeIs('certificates.*') ? 'active' : '' }}"
                                     ><i data-lucide="file-badge" class="sidebar-link-icon"></i
                                     ><span class="sidebar-link-text">Certificates</span></a
+                                >
+                            </li>
+                        @endif
+                        @if ($u->hasPermission('skills_institute.manage'))
+                            <li class="sidebar-item">
+                                <a
+                                    href="{{ route('skills-institute.index') }}"
+                                    target="_self"
+                                    class="sidebar-link {{ request()->routeIs('skills-institute.*') ? 'active' : '' }}"
+                                    ><i data-lucide="award" class="sidebar-link-icon"></i
+                                    ><span class="sidebar-link-text">Skills Institute</span></a
+                                >
+                            </li>
+                        @endif
+
+                        @if ($u->hasPermission('id_cards.manage'))
+                            <li class="sidebar-item">
+                                <a
+                                    href="{{ route('id-cards.index') }}"
+                                    target="_self"
+                                    class="sidebar-link {{ request()->routeIs('id-cards.*') ? 'active' : '' }}"
+                                    ><i data-lucide="id-card" class="sidebar-link-icon"></i
+                                    ><span class="sidebar-link-text">ID Cards</span></a
                                 >
                             </li>
                         @endif

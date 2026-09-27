@@ -116,7 +116,7 @@
             </div>
             <div class="invoice-detail-row">
               <span class="invoice-detail-label">Fee Classification</span>
-              <span class="invoice-detail-value text-capitalize">{{ str_replace('_', ' ', $invoice->fee_type) }}</span>
+              <span class="invoice-detail-value text-capitalize">{{ $invoice->fee_type_formatted }}</span>
             </div>
             <div class="invoice-detail-row">
               <span class="invoice-detail-label">Billing Session / Month</span>
@@ -152,17 +152,27 @@
           <table class="table table-invoice-breakdown align-middle mb-0">
             <thead>
               <tr>
-                <th>Description</th>
+                <th>Description / Fee Head</th>
                 <th>Category</th>
                 <th class="text-end" style="width: 30%;">Amount (PKR)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td class="fw-medium text-dark"><i data-lucide="book-open" style="width:1rem;height:1rem;" class="me-2 text-primary"></i> Base Fee ({{ str_replace('_', ' ', $invoice->fee_type) }})</td>
-                <td><span class="badge bg-light text-dark border">Standard Fee</span></td>
-                <td class="text-end fw-semibold text-dark">Rs. {{ number_format($invoice->amount, 2) }}</td>
-              </tr>
+              @foreach($invoice->fee_items as $fItem)
+                @php
+                  $fType = $fItem['fee_type'] ?? 'school_fee';
+                  $fTitle = $fItem['title'] ?? ucwords(str_replace('_', ' ', $fType));
+                  $fAmount = floatval($fItem['amount'] ?? 0);
+                @endphp
+                <tr>
+                  <td class="fw-medium text-dark">
+                    <i data-lucide="layers" style="width:1rem;height:1rem;" class="me-2 text-primary"></i>
+                    {{ $fTitle }}
+                  </td>
+                  <td><span class="badge bg-light text-dark border">{{ ucwords(str_replace('_', ' ', $fType)) }}</span></td>
+                  <td class="text-end fw-semibold text-dark">Rs. {{ number_format($fAmount, 2) }}</td>
+                </tr>
+              @endforeach
               @if($invoice->discount > 0)
                 <tr>
                   <td class="fw-medium" style="color: #6b4d3b;"><i data-lucide="tag" style="width:1rem;height:1rem;" class="me-2 text-secondary"></i> Less: Scholarship / Concession Discount</td>

@@ -19,6 +19,7 @@ class FeeManagement extends Model
         'academic_session_id',
         'invoice_no',
         'fee_type',
+        'fee_details',
         'fee_month',
         'amount',
         'discount',
@@ -36,7 +37,41 @@ class FeeManagement extends Model
         'paid_amount'  => 'decimal:2',
         'due_date'     => 'date',
         'payment_date' => 'date',
+        'fee_details'  => 'array',
     ];
+
+    /**
+     * Get structured list of fee items (heads) included in this invoice voucher
+     */
+    public function getFeeItemsAttribute(): array
+    {
+        if (!empty($this->fee_details) && is_array($this->fee_details)) {
+            return $this->fee_details;
+        }
+
+        return [
+            [
+                'fee_type' => $this->fee_type ?: 'school_fee',
+                'title'    => ucwords(str_replace('_', ' ', $this->fee_type ?: 'School Fee')),
+                'amount'   => (float) $this->amount,
+            ]
+        ];
+    }
+
+    /**
+     * Get user friendly formatted fee type summary
+     */
+    public function getFeeTypeFormattedAttribute(): string
+    {
+        $items = $this->fee_items;
+        if (count($items) > 1) {
+            $titles = array_map(fn($item) => $item['title'] ?? ucwords(str_replace('_', ' ', $item['fee_type'] ?? '')), $items);
+            return 'Multiple Fees (' . count($items) . '): ' . implode(', ', $titles);
+        }
+
+        $single = $items[0]['title'] ?? $items[0]['fee_type'] ?? $this->fee_type;
+        return ucwords(str_replace('_', ' ', $single));
+    }
 
     public function admission(): BelongsTo
     {

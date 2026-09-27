@@ -182,6 +182,7 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::post('fee-management/{id}/payment', [FeeManagementController::class, 'recordPayment'])->name('fee-management.payment');
 	Route::post('fee-management/{id}/restore', [FeeManagementController::class, 'restore'])->name('fee-management.restore');
 	Route::delete('fee-management/{id}/force-delete', [FeeManagementController::class, 'forceDelete'])->name('fee-management.force-delete');
+	Route::post('fee-management/bulk-action', [FeeManagementController::class, 'bulkAction'])->name('fee-management.bulk-action');
 	Route::resource('fee-management', FeeManagementController::class);
 	Route::resource('help', HelpController::class)->except(['store', 'update', 'destroy']);
 	Route::get('homework/get-subjects/{classId}', [HomeWorkController::class, 'getSubjects'])->name('homework.get-subjects');
@@ -228,8 +229,11 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::resource('school-info', SchoolInfoController::class);
 	Route::resource('sections', SectionController::class)->except(['store', 'update', 'destroy']);
 	Route::resource('settings', SettingController::class)->except(['store', 'update', 'destroy']);
+	Route::get('skills-institute/get-classes-by-session/{sessionId}', [SkillsInstituteController::class, 'getClassesBySession'])->name('skills-institute.get-classes-by-session');
 	Route::get('skills-institute/get-students/{className}', [SkillsInstituteController::class, 'getStudentsByClass'])->name('skills-institute.get-students');
 	Route::get('skills-institute/student-history/{studentId}', [SkillsInstituteController::class, 'getStudentSkillsHistory'])->name('skills-institute.student-history');
+	Route::get('skills-institute/{id}/print', [SkillsInstituteController::class, 'print'])->name('skills-institute.print');
+	Route::get('skills-institute/{id}/certificate', [SkillsInstituteController::class, 'certificate'])->name('skills-institute.certificate');
 	Route::resource('skills-institute', SkillsInstituteController::class);
 	Route::resource('sms', SmsController::class)->except(['store', 'update', 'destroy']);
 	Route::get('staff-trash', [StaffController::class, 'trash'])->name('staff.trash');
@@ -249,6 +253,7 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 	Route::resource('staff', StaffController::class);
 	Route::resource('student-promotion', StudentPromotionController::class);
 	Route::resource('subjects', SubjectController::class);
+	Route::resource('subject-types', SubjectTypeController::class);
 	Route::get('transport/get-classes-by-session/{sessionId}', [TransportController::class, 'getClassesBySession'])->name('transport.get-classes-by-session');
 	Route::get('transport/get-students/{className}', [TransportController::class, 'getStudentsByClass'])->name('transport.get-students');
 	Route::post('transport/assign-student', [TransportController::class, 'assignStudent'])->name('transport.assign-student');

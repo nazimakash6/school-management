@@ -254,7 +254,6 @@
                             <th>Period & Type</th>
                             <th>Score & Star Rating</th>
                             <th>Badge Level</th>
-                            <th>Certificate Code</th>
                             <th>Date</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
@@ -307,15 +306,6 @@
                                     <span class="badge {{ $s->badge_class }} badge-level-pill">
                                         {{ $s->badge_level }}
                                     </span>
-                                </td>
-                                <td>
-                                    @if($s->certificate_code)
-                                        <span class="cert-code-tag">
-                                            <i data-lucide="file-check" style="width:0.75rem;height:0.75rem;" class="me-1"></i>{{ $s->certificate_code }}
-                                        </span>
-                                    @else
-                                        <span class="text-muted small">&mdash;</span>
-                                    @endif
                                 </td>
                                 <td class="text-muted small">
                                     {{ $s->evaluation_date ? $s->evaluation_date->format('M d, Y') : 'N/A' }}

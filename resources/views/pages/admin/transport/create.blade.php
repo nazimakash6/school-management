@@ -96,8 +96,8 @@
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold text-dark small">Vehicle Ownership <span class="text-danger">*</span></label>
-                                <select name="vehicle_ownership" class="form-select" required>
+                                <label class="form-label fw-semibold text-dark small">Vehicle Ownership</label>
+                                <select name="vehicle_ownership" class="form-select">
                                     @foreach($vehicleOwnerships as $vo)
                                         <option value="{{ $vo }}" {{ old('vehicle_ownership', 'School Owned') === $vo ? 'selected' : '' }}>{{ $vo }}</option>
                                     @endforeach
@@ -105,13 +105,13 @@
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold text-dark small">Total Passenger Capacity <span class="text-danger">*</span></label>
-                                <input type="number" name="vehicle_capacity" class="form-control" min="1" value="{{ old('vehicle_capacity', 30) }}" required>
+                                <label class="form-label fw-semibold text-dark small">Total Passenger Capacity</label>
+                                <input type="number" name="vehicle_capacity" class="form-control" min="1" value="{{ old('vehicle_capacity', 30) }}">
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold text-dark small">Monthly Transport Fare (PKR) <span class="text-danger">*</span></label>
-                                <input type="number" step="0.01" name="fare_amount" class="form-control" min="0" value="{{ old('fare_amount', '150.00') }}" required>
+                                <label class="form-label fw-semibold text-dark small">Monthly Transport Fare (PKR)</label>
+                                <input type="number" step="0.01" name="fare_amount" class="form-control" min="0" value="{{ old('fare_amount', '150.00') }}">
                             </div>
                         </div>
                     </div>
@@ -188,8 +188,8 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold text-dark small">Operational Status <span class="text-danger">*</span></label>
-                            <select name="status" class="form-select" required>
+                            <label class="form-label fw-semibold text-dark small">Operational Status</label>
+                            <select name="status" class="form-select">
                                 <option value="Active" {{ old('status', 'Active') === 'Active' ? 'selected' : '' }}>Active</option>
                                 <option value="Maintenance" {{ old('status') === 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
                                 <option value="Suspended" {{ old('status') === 'Suspended' ? 'selected' : '' }}>Suspended</option>

@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('academic_session_id')->nullable()->constrained('academic_sessions')->onDelete('set null');
             $table->string('invoice_no')->unique();
             $table->string('fee_type')->default('tuition');
+            $table->json('fee_details')->nullable();
             $table->string('fee_month');
             $table->decimal('amount', 10, 2);
             $table->decimal('discount', 10, 2)->default(0);

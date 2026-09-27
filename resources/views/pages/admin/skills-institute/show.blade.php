@@ -45,7 +45,13 @@
             <h1 class="h3 fw-bold text-dark mb-0">Student Skill Performance Report</h1>
             <p class="text-muted small mb-0">Practical score breakdown, category competencies, and certification details</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('skills-institute.print', $skill->id) }}" target="_blank" class="btn btn-outline-primary btn-sm fw-semibold">
+                <i data-lucide="printer" style="width:0.9rem;height:0.9rem;" class="me-1"></i> Print Report
+            </a>
+            <a href="{{ route('skills-institute.certificate', $skill->id) }}" target="_blank" class="btn btn-warning text-dark btn-sm fw-bold shadow-sm">
+                <i data-lucide="award" style="width:0.9rem;height:0.9rem;" class="me-1"></i> Create Certificate
+            </a>
             <a href="{{ route('skills-institute.edit', $skill->id) }}" class="btn btn-outline-warning btn-sm">
                 <i data-lucide="edit-3" style="width:0.9rem;height:0.9rem;" class="me-1"></i> Edit Record
             </a>
@@ -86,7 +92,7 @@
                             <i data-lucide="star" style="width:1rem;height:1rem;" class="{{ $i <= round($avgStars) ? 'star-filled' : 'star-empty' }}"></i>
                         @endfor
                     </div>
-                    <small class="text-white-50 mt-1 d-block">{{ $totalEvaluations }} Evaluation Record(s)</small>
+                    <small class="text-white-50 mt-1 d-block">{{ $totalEvaluations }} Total Skill(s) Assessed</small>
                 </div>
             </div>
         </div>
@@ -107,30 +113,69 @@
                     </span>
                 </div>
                 <div class="card-body p-4">
-                    <div class="row g-3 mb-4">
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">Skill Name / Topic</span>
-                            <h5 class="fw-bold text-dark mb-0">{{ $skill->skill_name }}</h5>
+                    @if(count($skill->skills_list) > 1)
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center justify-content-between">
+                                <span><i data-lucide="layers" class="text-primary me-1" style="width:1rem;height:1rem;"></i> Evaluated Skills Breakdown ({{ count($skill->skills_list) }} Skills)</span>
+                                <span class="text-muted small fw-normal">Evaluation Date: {{ $skill->evaluation_date ? $skill->evaluation_date->format('M d, Y') : 'N/A' }}</span>
+                            </h6>
+                            <div class="table-responsive rounded-3 border">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light text-muted small text-uppercase">
+                                        <tr>
+                                            <th class="ps-3">#</th>
+                                            <th>Skill / Topic</th>
+                                            <th>Category</th>
+                                            <th>Assessment</th>
+                                            <th>Score</th>
+                                            <th class="pe-3 text-end">Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($skill->skills_list as $idx => $item)
+                                            <tr>
+                                                <td class="ps-3 fw-bold text-muted">{{ $idx + 1 }}</td>
+                                                <td class="fw-bold text-dark">{{ $item['skill_name'] }}</td>
+                                                <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ $item['skill_category'] }}</span></td>
+                                                <td class="small">{{ $item['assessment_type'] }}</td>
+                                                <td class="fw-bold">{{ number_format($item['obtained_score']) }} / {{ number_format($item['total_score']) }}</td>
+                                                <td class="pe-3 text-end">
+                                                    <span class="badge bg-warning text-dark font-monospace">
+                                                        ★ {{ number_format($item['star_rating'], 1) }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">Category</span>
-                            <span class="badge bg-primary bg-opacity-10 text-primary fs-6 px-3 py-1 mt-1">
-                                {{ $skill->skill_category }}
-                            </span>
+                    @else
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Skill Name / Topic</span>
+                                <h5 class="fw-bold text-dark mb-0">{{ $skill->skill_name }}</h5>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Category</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary fs-6 px-3 py-1 mt-1">
+                                    {{ $skill->skill_category }}
+                                </span>
+                            </div>
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Assessment Method</span>
+                                <strong class="text-dark">{{ $skill->assessment_type }}</strong>
+                            </div>
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Performance Period</span>
+                                <strong class="text-dark text-capitalize">{{ $skill->performance_period }}</strong>
+                            </div>
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Evaluation Date</span>
+                                <strong class="text-dark">{{ $skill->evaluation_date ? $skill->evaluation_date->format('M d, Y') : 'N/A' }}</strong>
+                            </div>
                         </div>
-                        <div class="col-sm-4">
-                            <span class="text-muted small d-block">Assessment Method</span>
-                            <strong class="text-dark">{{ $skill->assessment_type }}</strong>
-                        </div>
-                        <div class="col-sm-4">
-                            <span class="text-muted small d-block">Performance Period</span>
-                            <strong class="text-dark text-capitalize">{{ $skill->performance_period }}</strong>
-                        </div>
-                        <div class="col-sm-4">
-                            <span class="text-muted small d-block">Evaluation Date</span>
-                            <strong class="text-dark">{{ $skill->evaluation_date ? $skill->evaluation_date->format('M d, Y') : 'N/A' }}</strong>
-                        </div>
-                    </div>
+                    @endif
 
                     <hr class="my-3">
 
@@ -156,20 +201,10 @@
 
                     <!-- Instructor Feedback Notes -->
                     @if($skill->instructor_notes)
-                        <div class="mb-3">
+                        <div class="mt-4">
                             <h6 class="fw-bold text-dark mb-2"><i data-lucide="message-square" style="width:1rem;height:1rem;" class="text-primary me-1"></i> Instructor Remarks</h6>
                             <div class="p-3 bg-white border rounded-3 text-secondary italic">
                                 "{{ $skill->instructor_notes }}"
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Image Proof Attachment -->
-                    @if($skill->image_proof_url)
-                        <div class="mt-4">
-                            <h6 class="fw-bold text-dark mb-2"><i data-lucide="image" style="width:1rem;height:1rem;" class="text-primary me-1"></i> Practical Work / Certificate Attachment</h6>
-                            <div class="text-center p-3 border rounded-3 bg-light">
-                                <img src="{{ $skill->image_proof_url }}" alt="Proof" class="img-fluid rounded shadow-sm" style="max-height: 350px;">
                             </div>
                         </div>
                     @endif
@@ -177,25 +212,31 @@
             </div>
         </div>
 
-        <!-- Right Column: Verification & Skill History -->
+        <!-- Right Column: Quick Actions & Skill History -->
         <div class="col-lg-5">
-            <!-- Verification & Certificate Card -->
+            <!-- Print & Certificate Quick Action Card -->
             <div class="card border-0 shadow-sm rounded-3 mb-4">
                 <div class="card-header bg-white py-3 border-bottom">
                     <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <i data-lucide="shield-check" class="text-success" style="width:1.2rem;height:1.2rem;"></i>
-                        Certificate & Verification
+                        <i data-lucide="award" class="text-warning" style="width:1.2rem;height:1.2rem;"></i>
+                        Print & Certificate Actions
                     </h6>
                 </div>
                 <div class="card-body p-4">
-                    <div class="cert-frame p-3 text-center mb-3">
-                        <span class="text-muted small text-uppercase fw-bold">Official Certificate Code</span>
-                        <div class="h4 fw-bold font-monospace text-primary my-2">
-                            {{ $skill->certificate_code ?: 'SKL-VERIFIED-2026' }}
-                        </div>
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1">
-                            <i data-lucide="check-circle" style="width:0.85rem;height:0.85rem;" class="me-1"></i> Verified & Recorded
+                    <div class="text-center mb-3">
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1 mb-2">
+                            <i data-lucide="check-circle" style="width:0.85rem;height:0.85rem;" class="me-1"></i> Evaluation Complete & Verified
                         </span>
+                        <p class="text-muted small mb-0">Generate official school certificate or printable evaluation report for {{ $student->first_name }}</p>
+                    </div>
+
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{{ route('skills-institute.certificate', $skill->id) }}" target="_blank" class="btn btn-warning text-dark fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                            <i data-lucide="award" style="width:1.2rem;height:1.2rem;"></i> Create & Print Skill Certificate
+                        </a>
+                        <a href="{{ route('skills-institute.print', $skill->id) }}" target="_blank" class="btn btn-outline-primary fw-semibold py-2 d-flex align-items-center justify-content-center gap-2">
+                            <i data-lucide="printer" style="width:1.2rem;height:1.2rem;"></i> Print Evaluation Report
+                        </a>
                     </div>
 
                     <div class="text-muted small">
@@ -217,46 +258,62 @@
 
             <!-- Student's Skill History Summary Table -->
             <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-header bg-white py-3 border-bottom">
+                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
                     <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                         <i data-lucide="history" class="text-primary" style="width:1.2rem;height:1.2rem;"></i>
                         Student's Complete Skill Log
                     </h6>
+                    <span class="badge bg-primary bg-opacity-10 text-primary small">
+                        All Skills Logged
+                    </span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="bg-light text-muted small">
+                            <thead class="bg-light text-muted small text-uppercase">
                                 <tr>
                                     <th class="ps-3">Skill / Topic</th>
-                                    <th>Rating</th>
+                                    <th>Category</th>
+                                    <th>Rating &amp; Score</th>
                                     <th class="pe-3 text-end">Date</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($allStudentSkills as $item)
-                                    <tr class="{{ $item->id == $skill->id ? 'table-warning fw-bold' : '' }}">
-                                        <td class="ps-3">
-                                            <a href="{{ route('skills-institute.show', $item->id) }}" class="text-decoration-none text-dark">
-                                                {{ $item->skill_name }}
-                                            </a>
-                                            <div class="text-muted small">{{ $item->skill_category }}</div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-warning text-dark">
-                                                <i data-lucide="star" style="width:0.75rem;height:0.75rem;" class="star-filled"></i>
-                                                {{ number_format($item->star_rating, 1) }}
-                                            </span>
-                                        </td>
-                                        <td class="pe-3 text-end text-muted small">
-                                            {{ $item->evaluation_date ? $item->evaluation_date->format('M d') : 'N/A' }}
-                                        </td>
-                                    </tr>
-                                @empty
+                                @php $hasSkills = false; @endphp
+                                @foreach($allStudentSkills as $rec)
+                                    @foreach($rec->skills_list as $subSkill)
+                                        @php
+                                            $hasSkills = true;
+                                            $cleanName = preg_replace('/\s*\(\+\d+\s*skills?\)/i', '', $subSkill['skill_name']);
+                                        @endphp
+                                        <tr class="{{ $rec->id == $skill->id ? 'table-warning' : '' }}">
+                                            <td class="ps-3">
+                                                <a href="{{ route('skills-institute.show', $rec->id) }}" class="text-decoration-none text-dark fw-bold">
+                                                    {{ $cleanName }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border small">{{ $subSkill['skill_category'] }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning text-dark">
+                                                    <i data-lucide="star" style="width:0.75rem;height:0.75rem;" class="star-filled"></i>
+                                                    {{ number_format($subSkill['star_rating'], 1) }}
+                                                </span>
+                                                <small class="text-muted ms-1">({{ number_format($subSkill['obtained_score']) }}/{{ number_format($subSkill['total_score']) }})</small>
+                                            </td>
+                                            <td class="pe-3 text-end text-muted small">
+                                                {{ $rec->evaluation_date ? $rec->evaluation_date->format('M d, Y') : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+
+                                @if(!$hasSkills)
                                     <tr>
-                                        <td colspan="3" class="text-center py-3 text-muted small">No other skills recorded.</td>
+                                        <td colspan="4" class="text-center py-3 text-muted small">No skills recorded yet.</td>
                                     </tr>
-                                @endforelse
+                                @endif
                             </tbody>
                         </table>
                     </div>

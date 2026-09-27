@@ -224,7 +224,11 @@ class FeeManagementController extends Controller
         $validated = $request->validate([
             'admission_id'        => ['required', 'exists:admissions,id'],
             'academic_session_id' => ['nullable', 'exists:academic_sessions,id'],
-            'fee_type'            => ['required', 'string', 'max:50'],
+            'fee_type'            => ['nullable', 'string', 'max:100'],
+            'fee_items'           => ['nullable', 'array'],
+            'fee_items.*.fee_type' => ['nullable', 'string'],
+            'fee_items.*.title'    => ['nullable', 'string', 'max:255'],
+            'fee_items.*.amount'   => ['nullable', 'numeric', 'min:0'],
             'fee_month'           => ['required', 'string', 'max:20'],
             'amount'              => ['required', 'numeric', 'min:0'],
             'discount'            => ['nullable', 'numeric', 'min:0'],
@@ -239,11 +243,47 @@ class FeeManagementController extends Controller
         $validated['discount'] = $validated['discount'] ?? 0;
         $validated['paid_amount'] = $validated['paid_amount'] ?? 0;
 
+        // Process fee_items array
+        $processedFeeItems = [];
+        if (!empty($validated['fee_items']) && is_array($validated['fee_items'])) {
+            foreach ($validated['fee_items'] as $item) {
+                $itemAmt = floatval($item['amount'] ?? 0);
+                if ($itemAmt <= 0 && empty($item['title'])) continue;
+
+                $type = $item['fee_type'] ?? 'school_fee';
+                $title = !empty($item['title']) ? $item['title'] : ucwords(str_replace('_', ' ', $type));
+
+                $processedFeeItems[] = [
+                    'fee_type' => $type,
+                    'title'    => $title,
+                    'amount'   => $itemAmt,
+                ];
+            }
+        }
+
+        if (!empty($processedFeeItems)) {
+            $validated['fee_details'] = $processedFeeItems;
+            $feeTypes = array_unique(array_column($processedFeeItems, 'fee_type'));
+            $validated['fee_type'] = count($feeTypes) > 1 ? implode(', ', $feeTypes) : ($feeTypes[0] ?? 'school_fee');
+        } else {
+            $validated['fee_type'] = $validated['fee_type'] ?? 'school_fee';
+        }
+
         // Auto generate unique invoice number
         $latestId = FeeManagement::max('id') + 1;
         $validated['invoice_no'] = 'INV-' . date('Ym') . '-' . str_pad($latestId, 4, '0', STR_PAD_LEFT);
 
         $invoice = FeeManagement::create($validated);
+
+        if ((float) $invoice->paid_amount > 0) {
+            $this->autoClearPreviousUnpaidInvoices(
+                $invoice,
+                (float) $invoice->paid_amount,
+                $invoice->payment_method ?? 'cash',
+                $invoice->payment_date ? $invoice->payment_date->toDateString() : now()->toDateString(),
+                'Initial payment on Invoice #' . $invoice->invoice_no
+            );
+        }
 
         return redirect()
             ->route('fee-management.show', $invoice->id)
@@ -422,6 +462,17 @@ class FeeManagementController extends Controller
             'note'           => ['nullable', 'string', 'max:500'],
         ]);
 
+        $paymentAmount = (float) $validated['payment_amount'];
+
+        // Auto clear previous unpaid invoices for this student if any exist
+        $this->autoClearPreviousUnpaidInvoices(
+            $invoice,
+            $paymentAmount,
+            $validated['payment_method'],
+            $validated['payment_date'],
+            $validated['note'] ?? null
+        );
+
         // Auto generate receipt_no
         $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
         $receiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
@@ -431,7 +482,7 @@ class FeeManagementController extends Controller
             'fee_management_id' => $invoice->id,
             'admission_id'      => $invoice->admission_id,
             'receipt_no'        => $receiptNo,
-            'amount'            => $validated['payment_amount'],
+            'amount'            => $paymentAmount,
             'payment_method'    => $validated['payment_method'],
             'payment_date'      => $validated['payment_date'],
             'note'              => $validated['note'] ?? null,
@@ -446,7 +497,7 @@ class FeeManagementController extends Controller
 
         return redirect()
             ->route('fee-management.show', $invoice->id)
-            ->with('success', 'Payment of Rs. ' . number_format($validated['payment_amount'], 2) . ' recorded successfully (Receipt #' . $receiptNo . ').');
+            ->with('success', 'Payment of Rs. ' . number_format($paymentAmount, 2) . ' recorded successfully (Receipt #' . $receiptNo . ').');
     }
 
     public function printPaymentReceipt($paymentId): View|RedirectResponse
@@ -620,7 +671,11 @@ class FeeManagementController extends Controller
         $validated = $request->validate([
             'admission_id'        => ['required', 'exists:admissions,id'],
             'academic_session_id' => ['nullable', 'exists:academic_sessions,id'],
-            'fee_type'            => ['required', 'string', 'max:50'],
+            'fee_type'            => ['nullable', 'string', 'max:100'],
+            'fee_items'           => ['nullable', 'array'],
+            'fee_items.*.fee_type' => ['nullable', 'string'],
+            'fee_items.*.title'    => ['nullable', 'string', 'max:255'],
+            'fee_items.*.amount'   => ['nullable', 'numeric', 'min:0'],
             'fee_month'           => ['required', 'string', 'max:20'],
             'amount'              => ['required', 'numeric', 'min:0'],
             'discount'            => ['nullable', 'numeric', 'min:0'],
@@ -634,6 +689,32 @@ class FeeManagementController extends Controller
 
         $validated['discount'] = $validated['discount'] ?? 0;
         $validated['paid_amount'] = $validated['paid_amount'] ?? 0;
+
+        // Process fee_items array
+        $processedFeeItems = [];
+        if (!empty($validated['fee_items']) && is_array($validated['fee_items'])) {
+            foreach ($validated['fee_items'] as $item) {
+                $itemAmt = floatval($item['amount'] ?? 0);
+                if ($itemAmt <= 0 && empty($item['title'])) continue;
+
+                $type = $item['fee_type'] ?? 'school_fee';
+                $title = !empty($item['title']) ? $item['title'] : ucwords(str_replace('_', ' ', $type));
+
+                $processedFeeItems[] = [
+                    'fee_type' => $type,
+                    'title'    => $title,
+                    'amount'   => $itemAmt,
+                ];
+            }
+        }
+
+        if (!empty($processedFeeItems)) {
+            $validated['fee_details'] = $processedFeeItems;
+            $feeTypes = array_unique(array_column($processedFeeItems, 'fee_type'));
+            $validated['fee_type'] = count($feeTypes) > 1 ? implode(', ', $feeTypes) : ($feeTypes[0] ?? 'school_fee');
+        } else {
+            $validated['fee_type'] = $validated['fee_type'] ?? 'school_fee';
+        }
 
         $invoice->update($validated);
 
@@ -689,6 +770,45 @@ class FeeManagementController extends Controller
         return redirect()
             ->route('fee-management.trash')
             ->with('success', 'Fee invoice restored successfully.');
+    }
+
+    public function forceDelete($id): RedirectResponse
+    {
+        $invoice = FeeManagement::onlyTrashed()->findOrFail($id);
+        $invoice->payments()->withTrashed()->forceDelete();
+        $invoice->forceDelete();
+
+        return redirect()
+            ->route('fee-management.trash')
+            ->with('success', 'Fee invoice permanently deleted successfully.');
+    }
+
+    public function bulkAction(Request $request): RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+        $action = $request->input('action');
+
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Please select at least one record.');
+        }
+
+        if ($action === 'restore') {
+            FeeManagement::onlyTrashed()->whereIn('id', $ids)->restore();
+            return redirect()->route('fee-management.trash')
+                ->with('success', count($ids) . ' fee invoice(s) restored successfully.');
+        }
+
+        if ($action === 'force_delete' || $action === 'delete') {
+            $invoices = FeeManagement::onlyTrashed()->whereIn('id', $ids)->get();
+            foreach ($invoices as $invoice) {
+                $invoice->payments()->withTrashed()->forceDelete();
+                $invoice->forceDelete();
+            }
+            return redirect()->route('fee-management.trash')
+                ->with('success', count($invoices) . ' fee invoice(s) permanently deleted.');
+        }
+
+        return back()->with('error', 'Invalid action selected.');
     }
 
     public function statement(Request $request): View
@@ -1016,5 +1136,55 @@ class FeeManagementController extends Controller
             'totalPaidAmount',
             'totalDueBalance'
         ));
+    }
+
+    /**
+     * Helper to auto-allocate payment / clear previous unpaid/partial invoices for a student
+     */
+    private function autoClearPreviousUnpaidInvoices(FeeManagement $currentInvoice, float $paidAmount, string $paymentMethod, string $paymentDate, ?string $note = null): void
+    {
+        if (!$currentInvoice->admission_id || $paidAmount <= 0) {
+            return;
+        }
+
+        $previousUnpaidInvoices = FeeManagement::where('admission_id', $currentInvoice->admission_id)
+            ->where('id', '!=', $currentInvoice->id)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($previousUnpaidInvoices->isEmpty()) {
+            return;
+        }
+
+        $paymentRemaining = $paidAmount;
+
+        foreach ($previousUnpaidInvoices as $prevInv) {
+            if ($paymentRemaining <= 0) break;
+
+            $due = (float) $prevInv->due_balance;
+            if ($due <= 0) continue;
+
+            $alloc = min($paymentRemaining, $due);
+
+            $latestPaymentId = \App\Models\FeePayment::max('id') + 1;
+            $prevReceiptNo = 'RCT-' . date('Ym') . '-' . str_pad($latestPaymentId, 4, '0', STR_PAD_LEFT);
+
+            \App\Models\FeePayment::create([
+                'fee_management_id' => $prevInv->id,
+                'admission_id'      => $prevInv->admission_id,
+                'receipt_no'        => $prevReceiptNo,
+                'amount'            => $alloc,
+                'payment_method'    => $paymentMethod,
+                'payment_date'      => $paymentDate,
+                'note'              => $note ?: ('Previous dues cleared via payment on Invoice #' . $currentInvoice->invoice_no),
+            ]);
+
+            $prevInv->paid_amount = (float) \App\Models\FeePayment::where('fee_management_id', $prevInv->id)->sum('amount');
+            $prevInv->save();
+
+            $paymentRemaining -= $alloc;
+        }
     }
 }

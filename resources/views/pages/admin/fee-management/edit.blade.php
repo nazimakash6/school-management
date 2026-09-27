@@ -73,7 +73,8 @@
         <div class="col-md-4">
           <label for="admission_id" class="form-label fw-semibold">Select Student <span class="text-danger">*</span></label>
           <select name="admission_id" id="admission_id" class="form-select @error('admission_id') is-invalid @enderror" required>
-            <option value="" data-class="" data-section="" data-father="" data-no="" data-session="" data-fee-plan="Monthly" data-base-fee="0" data-discount="0" data-net-fee="0" data-reg-fee="0" data-unpaid='[]' data-siblings='[]'>-- Search & Select Student --</option>
+            <option value="" data-class="" data-section="" data-father="" data-no="" data-session="" data-fee-plan="Monthly" data-base-fee="0" data-discount="0" data-net-fee="0" data-reg-fee="0" data-unpaid="[]" data-siblings="[]">-- Search & Select Student --</option>
+            @php $allStudentData = []; @endphp
             @foreach($students as $st)
               @php
                 $stStudent = \App\Models\Student::where('admission_no', $st->admission_no)->first() ?: $st;
@@ -175,6 +176,7 @@
                     ];
                 }
               @endphp
+              @php $allStudentData[$st->id] = ['unpaid' => $stUnpaid, 'siblings' => $siblingsArr]; @endphp
               <option value="{{ $st->id }}" 
                       data-class="{{ $st->class_name }}"
                       data-section="{{ $st->section_name }}"
@@ -186,8 +188,6 @@
                       data-discount="{{ $discount }}"
                       data-net-fee="{{ $netFee }}"
                       data-reg-fee="{{ $regFee }}"
-                      data-unpaid='@json($stUnpaid)'
-                      data-siblings='@json($siblingsArr)'
                       @selected(old('admission_id', $invoice->admission_id) == $st->id)>
                 {{ $st->first_name }} {{ $st->last_name }} (ID: {{ $st->admission_no }} | Class: {{ $st->class_name }})
               </option>
@@ -196,6 +196,7 @@
           @error('admission_id')
             <div class="invalid-feedback">{{ $message }}</div>
           @enderror
+          <script>window.STUDENT_FEE_DATA = @json($allStudentData);</script>
         </div>
 
         {{-- 2. STUDENT & FEE PLAN PREVIEW BOX --}}
@@ -239,6 +240,31 @@
           </div>
         </div>
 
+        @php
+          $existingFeeItems = old('fee_items', $invoice->fee_items);
+          if (!is_array($existingFeeItems) || empty($existingFeeItems)) {
+              $existingFeeItems = [
+                  [
+                      'fee_type' => $invoice->fee_type ?: 'school_fee',
+                      'title'    => ucwords(str_replace('_', ' ', $invoice->fee_type ?: 'School Fee')),
+                      'amount'   => (float) $invoice->amount,
+                  ]
+              ];
+          }
+
+          $hasSiblingFee = false;
+          $hasPreviousDues = false;
+          foreach($existingFeeItems as $efItem) {
+              $t = strtolower($efItem['title'] ?? '');
+              if (str_contains($t, 'sibling')) {
+                  $hasSiblingFee = true;
+              }
+              if (str_contains($t, 'previous') || str_contains($t, 'arrears')) {
+                  $hasPreviousDues = true;
+              }
+          }
+        @endphp
+
         {{-- 3. PREVIOUS PENDING DUES / ARREARS BOX --}}
         <div class="col-md-12">
           <div id="previous_dues_box" class="p-3 bg-danger-subtle border border-danger-subtle rounded d-none">
@@ -248,7 +274,7 @@
                 Previous Pending Dues / Unpaid Arrears
               </h6>
               <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" id="include_previous_dues">
+                <input class="form-check-input" type="checkbox" id="include_previous_dues" @checked($hasPreviousDues)>
                 <label class="form-check-label fw-bold text-dark text-sm ms-1" for="include_previous_dues">
                   Include Previous Pending Dues in Voucher Total
                 </label>
@@ -270,7 +296,7 @@
                 Attached Sibling(s) Fee Record
               </h6>
               <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" id="include_sibling_fee">
+                <input class="form-check-input" type="checkbox" id="include_sibling_fee" @checked($hasSiblingFee)>
                 <label class="form-check-label fw-bold text-dark text-sm ms-1" for="include_sibling_fee">
                   Include Sibling Fee in Voucher Total
                 </label>
@@ -284,24 +310,76 @@
           </div>
         </div>
 
-        {{-- 5. FEE CLASSIFICATION AND DATES --}}
-        <div class="col-md-4">
-          <label for="fee_type" class="form-label fw-semibold">Fee Type <span class="text-danger">*</span></label>
-          <select name="fee_type" id="fee_type" class="form-select @error('fee_type') is-invalid @enderror" required>
-            <option value="school_fee" @selected(old('fee_type', $invoice->fee_type) === 'school_fee')>School Fee / Class Fee</option>
-            <option value="tuition" @selected(old('fee_type', $invoice->fee_type) === 'tuition')>Tuition Fee (Separate)</option>
-            <option value="admission" @selected(old('fee_type', $invoice->fee_type) === 'admission')>Admission / Registration Fee</option>
-            <option value="examination" @selected(old('fee_type', $invoice->fee_type) === 'examination')>Examination Fee</option>
-            <option value="transport" @selected(old('fee_type', $invoice->fee_type) === 'transport')>Transport Fee</option>
-            <option value="hostel" @selected(old('fee_type', $invoice->fee_type) === 'hostel')>Hostel Fee</option>
-            <option value="miscellaneous" @selected(old('fee_type', $invoice->fee_type) === 'miscellaneous')>Miscellaneous</option>
-          </select>
-          @error('fee_type')
-            <div class="invalid-feedback">{{ $message }}</div>
-          @enderror
+        {{-- 5. MULTI-FEE HEADS & VOUCHER DATES --}}
+        <div class="col-md-12">
+          <div class="p-3 bg-white border rounded shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5">
+                <i data-lucide="layers" style="width:1.1rem;height:1.1rem;" class="text-primary"></i>
+                Fee Types &amp; Heads Breakdown (Pay Multiple Fees in Single Receipt)
+              </h6>
+              <button type="button" class="btn btn-outline-primary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnAddFeeHead">
+                <i data-lucide="plus-circle" style="width:1rem;height:1rem;"></i> Add Fee Head
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle mb-0" id="feeHeadsTable">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 28%;">Fee Category / Type <span class="text-danger">*</span></th>
+                    <th style="width: 44%;">Description / Fee Title <span class="text-danger">*</span></th>
+                    <th style="width: 20%;">Amount (PKR) <span class="text-danger">*</span></th>
+                    <th style="width: 8%;" class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="feeHeadsContainer">
+                  @foreach($existingFeeItems as $idx => $item)
+                    @php
+                      $itemType = $item['fee_type'] ?? 'school_fee';
+                      $itemTitle = $item['title'] ?? ucwords(str_replace('_', ' ', $itemType));
+                      $itemAmount = floatval($item['amount'] ?? 0);
+                    @endphp
+                    <tr class="fee-head-row" data-index="{{ $idx }}">
+                      <td>
+                        <select name="fee_items[{{ $idx }}][fee_type]" class="form-select form-select-sm select-fee-type" required>
+                          <option value="school_fee" @selected($itemType === 'school_fee')>School Fee / Class Fee</option>
+                          <option value="tuition" @selected($itemType === 'tuition')>Tuition Fee (Separate)</option>
+                          <option value="admission" @selected($itemType === 'admission')>Admission / Registration Fee</option>
+                          <option value="examination" @selected($itemType === 'examination')>Examination Fee</option>
+                          <option value="transport" @selected($itemType === 'transport')>Transport Fee</option>
+                          <option value="hostel" @selected($itemType === 'hostel')>Hostel Fee</option>
+                          <option value="miscellaneous" @selected($itemType === 'miscellaneous')>Miscellaneous / Other</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" name="fee_items[{{ $idx }}][title]" class="form-control form-control-sm input-fee-title" value="{{ $itemTitle }}" placeholder="e.g. School Monthly Fee" required>
+                      </td>
+                      <td>
+                        <input type="number" step="0.01" min="0" name="fee_items[{{ $idx }}][amount]" class="form-control form-control-sm input-fee-amount" value="{{ number_format($itemAmount, 2, '.', '') }}" placeholder="0.00" required>
+                      </td>
+                      <td class="text-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-fee-head px-2 py-1 {{ count($existingFeeItems) <= 1 ? 'd-none' : '' }}" title="Remove this fee head">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 align-middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  @endforeach
+                </tbody>
+                <tfoot class="table-light">
+                  <tr>
+                    <td colspan="2" class="text-end fw-bold text-dark fs-7">Subtotal Fee Heads Amount:</td>
+                    <td class="fw-extrabold text-primary fs-6" id="feeHeadsSubtotalDisplay">Rs. {{ number_format($invoice->amount, 2) }}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label for="fee_month" class="form-label fw-semibold">Fee Month <span class="text-danger">*</span></label>
           <input type="month" name="fee_month" id="fee_month" class="form-control @error('fee_month') is-invalid @enderror" value="{{ old('fee_month', $invoice->fee_month) }}" required>
           @error('fee_month')
@@ -309,7 +387,7 @@
           @enderror
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label for="due_date" class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
           <input type="date" name="due_date" id="due_date" class="form-control @error('due_date') is-invalid @enderror" value="{{ old('due_date', $invoice->due_date ? $invoice->due_date->format('Y-m-d') : '') }}" required>
           @error('due_date')
@@ -321,6 +399,7 @@
         <div class="col-md-4">
           <label for="amount" class="form-label fw-semibold">Total Fee Amount (PKR) <span class="text-danger">*</span></label>
           <input type="number" step="0.01" min="0" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', $invoice->amount) }}" placeholder="0.00" required>
+          <small class="text-muted fs-8">Auto-calculated from fee heads breakdown</small>
           @error('amount')
             <div class="invalid-feedback">{{ $message }}</div>
           @enderror
@@ -491,7 +570,10 @@
       const siblingBreakdownText = document.getElementById('sibling_calculation_breakdown');
       const combinedTotalDisplay = document.getElementById('combined_total_display');
 
-      const feeTypeSelect = document.getElementById('fee_type');
+      const feeHeadsContainer = document.getElementById('feeHeadsContainer');
+      const btnAddFeeHead = document.getElementById('btnAddFeeHead');
+      const feeHeadsSubtotalDisplay = document.getElementById('feeHeadsSubtotalDisplay');
+
       const amountInput = document.getElementById('amount');
       const discountInput = document.getElementById('discount');
       const paidAmountInput = document.getElementById('paid_amount');
@@ -509,9 +591,18 @@
       const calcBalanceDisplay = document.getElementById('calcBalanceDisplay');
       const calcBalanceBadge = document.getElementById('calcBalanceBadge');
 
-      let currentStudentUnpaid = [];
-      let currentStudentSiblings = [];
-      let isManualAmountChange = true;
+      let currentUnpaidData = [];
+      let currentSiblingsData = [];
+
+      const feeTypeTitles = {
+        'school_fee': 'School Fee / Class Fee',
+        'tuition': 'Tuition Fee (Separate)',
+        'admission': 'Admission / Registration Fee',
+        'examination': 'Examination Fee',
+        'transport': 'Transport Fee',
+        'hostel': 'Hostel Fee',
+        'miscellaneous': 'Miscellaneous / Other Fee'
+      };
 
       // Initialize Select2
       $studentSelect.select2({
@@ -521,118 +612,21 @@
         width: '100%'
       });
 
-      // Class Filter Logic
-      $('#class_filter').on('change', function () {
-        const selectedClass = $(this).val();
-        $studentSelect.find('option').each(function () {
-          const optClass = $(this).data('class');
-          if (!selectedClass || optClass === selectedClass || $(this).val() === '') {
-            $(this).prop('disabled', false).show();
-          } else {
-            $(this).prop('disabled', true).hide();
-          }
-        });
-        if ($studentSelect.val()) {
-          const selectedOpt = $studentSelect.find('option:selected');
-          if (selectedOpt.prop('disabled')) {
-            $studentSelect.val('').trigger('change');
-          }
-        }
-        $studentSelect.select2({
-          theme: 'bootstrap-5',
-          placeholder: '-- Search Student by Name or Admission No --',
-          allowClear: true,
-          width: '100%'
-        });
-      });
+      function formatMoney(amount) {
+        return 'Rs. ' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
 
-      // Student Selection Change
-      $studentSelect.on('change', function () {
-        const selectedOption = $(this).find('option:selected');
-        const admId = $(this).val();
-
-        if (!admId) {
-          infoBox.classList.add('d-none');
-          previousDuesBox.classList.add('d-none');
-          siblingInfoBox.classList.add('d-none');
-          currentStudentUnpaid = [];
-          currentStudentSiblings = [];
-          updateCalculations();
-          return;
-        }
-
-        const admNo = selectedOption.data('no') || '-';
-        const className = selectedOption.data('class') || '-';
-        const sectionName = selectedOption.data('section') || '';
-        const fatherName = selectedOption.data('father') || '-';
-        const session = selectedOption.data('session');
-        const feePlan = selectedOption.data('fee-plan') || 'Monthly';
-        const baseFee = parseFloat(selectedOption.data('base-fee')) || 0;
-        const discount = parseFloat(selectedOption.data('discount')) || 0;
-        const netFee = parseFloat(selectedOption.data('net-fee')) || 0;
-
-        currentStudentUnpaid = selectedOption.data('unpaid') || [];
-        currentStudentSiblings = selectedOption.data('siblings') || [];
-
-        // Update Student Info Box
-        stAdmNo.textContent = admNo;
-        stClassSec.textContent = className + (sectionName ? ` (${sectionName})` : '');
-        stFather.textContent = fatherName;
-        stFeePlanBadge.textContent = `Plan: ${feePlan}`;
-        stFeeDisplay.textContent = `Rs. ${netFee.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        infoBox.classList.remove('d-none');
-
-        // Render Previous Pending Dues
-        if (currentStudentUnpaid.length > 0) {
-          let duesHtml = '<div class="table-responsive"><table class="table table-sm table-bordered bg-white mb-0 fs-8"><thead><tr class="table-light"><th>Voucher #</th><th>Month</th><th>Type</th><th>Due Date</th><th>Amount</th><th>Paid</th><th>Pending Due</th></tr></thead><tbody>';
-          let totalPrevDues = 0;
-          currentStudentUnpaid.forEach(inv => {
-            totalPrevDues += parseFloat(inv.due_balance);
-            duesHtml += `<tr><td class="fw-bold font-monospace">${inv.invoice_no}</td><td>${inv.fee_month}</td><td>${inv.fee_type}</td><td class="text-danger">${inv.due_date}</td><td>Rs. ${parseFloat(inv.net_amount).toFixed(2)}</td><td class="text-success">Rs. ${parseFloat(inv.paid_amount).toFixed(2)}</td><td class="fw-bold text-danger">Rs. ${parseFloat(inv.due_balance).toFixed(2)}</td></tr>`;
-          });
-          duesHtml += '</tbody></table></div>';
-          previousDuesContainer.innerHTML = duesHtml;
-          previousDuesTotalDisplay.textContent = `Total Previous Pending Dues: Rs. ${totalPrevDues.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-          previousDuesBox.classList.remove('d-none');
-        } else {
-          previousDuesBox.classList.add('d-none');
-        }
-
-        // Render Sibling Fee Info
-        if (currentStudentSiblings.length > 0) {
-          let sibHtml = '<div class="table-responsive"><table class="table table-sm table-bordered bg-white mb-0 fs-8"><thead><tr class="table-light"><th>Sibling Name</th><th>Adm No</th><th>Class</th><th>Fee Plan</th><th>Net Fee</th><th>Unpaid Arrears</th></tr></thead><tbody>';
-          currentStudentSiblings.forEach(sib => {
-            let sibUnpaidTotal = 0;
-            if (sib.unpaid && sib.unpaid.length > 0) {
-              sib.unpaid.forEach(u => sibUnpaidTotal += parseFloat(u.due_balance));
-            }
-            sibHtml += `<tr><td class="fw-bold text-dark">${sib.name}</td><td>${sib.admission_no}</td><td>${sib.class_sec}</td><td><span class="badge bg-secondary-subtle text-secondary">${sib.fee_plan}</span></td><td class="fw-bold text-primary">Rs. ${parseFloat(sib.net_fee).toFixed(2)}</td><td class="${sibUnpaidTotal > 0 ? 'fw-bold text-danger' : 'text-muted'}">${sibUnpaidTotal > 0 ? 'Rs. ' + sibUnpaidTotal.toFixed(2) : 'No Arrears'}</td></tr>`;
-          });
-          sibHtml += '</tbody></table></div>';
-          siblingsListContainer.innerHTML = sibHtml;
-          siblingInfoBox.classList.remove('d-none');
-        } else {
-          siblingInfoBox.classList.add('d-none');
-        }
-
-        if (sessionSelect && session) {
-          $(sessionSelect).val(session);
-        }
-
-        updateCalculations();
-      });
-
-      // Recalculate Summary Card
       function updateCalculations() {
+        if (!amountInput) return;
         const grossAmount = parseFloat(amountInput.value) || 0;
-        const discountAmount = parseFloat(discountInput.value) || 0;
-        const paidAmount = parseFloat(paidAmountInput.value) || 0;
+        const discountAmount = parseFloat(discountInput ? discountInput.value : 0) || 0;
+        const paidAmount = parseFloat(paidAmountInput ? paidAmountInput.value : 0) || 0;
 
         const netPayable = Math.max(0, grossAmount - discountAmount);
         const dueBalance = Math.max(0, netPayable - paidAmount);
 
-        let calculatedStatus = statusSelect.value;
-        if (statusSelect.value !== 'cancelled') {
+        let calculatedStatus = statusSelect ? statusSelect.value : 'unpaid';
+        if (statusSelect && statusSelect.value !== 'cancelled') {
           if (paidAmount >= netPayable && netPayable > 0) {
             calculatedStatus = 'paid';
           } else if (paidAmount > 0) {
@@ -642,72 +636,467 @@
           }
         }
 
-        calcGrossDisplay.textContent = `Rs. ${grossAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        calcDiscountDisplay.textContent = `- Rs. ${discountAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        calcNetDisplay.textContent = `Rs. ${netPayable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        calcPaidDisplay.textContent = `Rs. ${paidAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        calcBalanceDisplay.textContent = `Rs. ${dueBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if (calcGrossDisplay) calcGrossDisplay.textContent = formatMoney(grossAmount);
+        if (calcDiscountDisplay) calcDiscountDisplay.textContent = `- ${formatMoney(discountAmount)}`;
+        if (calcNetDisplay) calcNetDisplay.textContent = formatMoney(netPayable);
+        if (calcPaidDisplay) calcPaidDisplay.textContent = formatMoney(paidAmount);
+        if (calcBalanceDisplay) calcBalanceDisplay.textContent = formatMoney(dueBalance);
 
-        calcStatusBadge.className = 'badge rounded-pill text-uppercase fs-8 ';
-        calcBalanceBadge.className = 'badge fs-8 px-2.5 py-1.5 rounded-pill ';
+        if (calcStatusBadge) calcStatusBadge.className = 'badge rounded-pill text-uppercase fs-8 ';
+        if (calcBalanceBadge) calcBalanceBadge.className = 'badge fs-8 px-2.5 py-1.5 rounded-pill ';
 
         if (calculatedStatus === 'paid') {
-          calcStatusBadge.classList.add('bg-success', 'text-white');
-          calcBalanceBadge.classList.add('bg-success', 'text-white');
-          calcStatusBadge.textContent = 'Fully Paid';
-          calcBalanceBadge.textContent = 'Paid';
-          calcBalanceBar.style.backgroundColor = '#f0fdf4';
-          calcBalanceBar.style.borderColor = '#bbf7d0';
-          calcBalanceTitle.className = 'fw-bold fs-7 d-block text-success';
-          calcBalanceTitle.textContent = 'Account Fully Settled (No Due Balance)';
+          if (calcStatusBadge) {
+            calcStatusBadge.classList.add('bg-success', 'text-white');
+            calcStatusBadge.textContent = 'Fully Paid';
+          }
+          if (calcBalanceBadge) {
+            calcBalanceBadge.classList.add('bg-success', 'text-white');
+            calcBalanceBadge.textContent = 'Paid';
+          }
+          if (calcBalanceBar) {
+            calcBalanceBar.style.backgroundColor = '#f0fdf4';
+            calcBalanceBar.style.borderColor = '#bbf7d0';
+          }
+          if (calcBalanceTitle) {
+            calcBalanceTitle.className = 'fw-bold fs-7 d-block text-success';
+            calcBalanceTitle.textContent = 'Account Fully Settled (No Due Balance)';
+          }
         } else if (calculatedStatus === 'partial') {
-          calcStatusBadge.classList.add('bg-warning', 'text-dark');
-          calcBalanceBadge.classList.add('bg-warning', 'text-dark');
-          calcStatusBadge.textContent = 'Partial Payment';
-          calcBalanceBadge.textContent = 'Partial';
-          calcBalanceBar.style.backgroundColor = '#fffbeb';
-          calcBalanceBar.style.borderColor = '#fef08a';
-          calcBalanceTitle.className = 'fw-bold fs-7 d-block text-warning-emphasis';
-          calcBalanceTitle.textContent = 'Partial Payment Received - Remaining Due Balance:';
+          if (calcStatusBadge) {
+            calcStatusBadge.classList.add('bg-warning', 'text-dark');
+            calcStatusBadge.textContent = 'Partial Payment';
+          }
+          if (calcBalanceBadge) {
+            calcBalanceBadge.classList.add('bg-warning', 'text-dark');
+            calcBalanceBadge.textContent = 'Partial';
+          }
+          if (calcBalanceBar) {
+            calcBalanceBar.style.backgroundColor = '#fffbeb';
+            calcBalanceBar.style.borderColor = '#fef08a';
+          }
+          if (calcBalanceTitle) {
+            calcBalanceTitle.className = 'fw-bold fs-7 d-block text-warning-emphasis';
+            calcBalanceTitle.textContent = 'Partial Payment Received - Remaining Due Balance:';
+          }
         } else if (calculatedStatus === 'cancelled') {
-          calcStatusBadge.classList.add('bg-secondary', 'text-white');
-          calcBalanceBadge.classList.add('bg-secondary', 'text-white');
-          calcStatusBadge.textContent = 'Cancelled';
-          calcBalanceBadge.textContent = 'Cancelled';
-          calcBalanceBar.style.backgroundColor = '#f8fafc';
-          calcBalanceBar.style.borderColor = '#e2e8f0';
-          calcBalanceTitle.className = 'fw-bold fs-7 d-block text-secondary';
-          calcBalanceTitle.textContent = 'Voucher Cancelled';
+          if (calcStatusBadge) {
+            calcStatusBadge.classList.add('bg-secondary', 'text-white');
+            calcStatusBadge.textContent = 'Cancelled';
+          }
+          if (calcBalanceBadge) {
+            calcBalanceBadge.classList.add('bg-secondary', 'text-white');
+            calcBalanceBadge.textContent = 'Cancelled';
+          }
+          if (calcBalanceBar) {
+            calcBalanceBar.style.backgroundColor = '#f8fafc';
+            calcBalanceBar.style.borderColor = '#e2e8f0';
+          }
+          if (calcBalanceTitle) {
+            calcBalanceTitle.className = 'fw-bold fs-7 d-block text-secondary';
+            calcBalanceTitle.textContent = 'Voucher Cancelled';
+          }
         } else {
-          calcStatusBadge.classList.add('bg-danger', 'text-white');
-          calcBalanceBadge.classList.add('bg-danger', 'text-white');
-          calcStatusBadge.textContent = 'Unpaid';
-          calcBalanceBadge.textContent = 'Unpaid';
-          calcBalanceBar.style.backgroundColor = '#fef2f2';
-          calcBalanceBar.style.borderColor = '#fecaca';
-          calcBalanceTitle.className = 'fw-bold fs-7 d-block text-danger';
-          calcBalanceTitle.textContent = 'Remaining Outstanding Due Balance:';
+          if (calcStatusBadge) {
+            calcStatusBadge.classList.add('bg-danger', 'text-white');
+            calcStatusBadge.textContent = 'Unpaid';
+          }
+          if (calcBalanceBadge) {
+            calcBalanceBadge.classList.add('bg-danger', 'text-white');
+            calcBalanceBadge.textContent = 'Unpaid';
+          }
+          if (calcBalanceBar) {
+            calcBalanceBar.style.backgroundColor = '#fef2f2';
+            calcBalanceBar.style.borderColor = '#fecaca';
+          }
+          if (calcBalanceTitle) {
+            calcBalanceTitle.className = 'fw-bold fs-7 d-block text-danger';
+            calcBalanceTitle.textContent = 'Remaining Outstanding Due Balance:';
+          }
         }
       }
 
-      // Input Event Listeners
-      [amountInput, discountInput, paidAmountInput].forEach(input => {
-        input.addEventListener('input', function() {
-          isManualAmountChange = true;
-          updateCalculations();
+      function reindexFeeHeads() {
+        const rows = feeHeadsContainer.querySelectorAll('.fee-head-row');
+        rows.forEach((row, idx) => {
+          row.setAttribute('data-index', idx);
+          row.querySelector('.select-fee-type').setAttribute('name', `fee_items[${idx}][fee_type]`);
+          row.querySelector('.input-fee-title').setAttribute('name', `fee_items[${idx}][title]`);
+          row.querySelector('.input-fee-amount').setAttribute('name', `fee_items[${idx}][amount]`);
+
+          const btnRemove = row.querySelector('.btn-remove-fee-head');
+          if (btnRemove) {
+            if (rows.length > 1) {
+              btnRemove.classList.remove('d-none');
+            } else {
+              btnRemove.classList.add('d-none');
+            }
+          }
         });
+        calculateFeeHeadsSum();
+      }
+
+      function calculateFeeHeadsSum() {
+        let sum = 0;
+        const amounts = feeHeadsContainer.querySelectorAll('.input-fee-amount');
+        amounts.forEach(input => {
+          sum += parseFloat(input.value) || 0;
+        });
+
+        if (feeHeadsSubtotalDisplay) feeHeadsSubtotalDisplay.textContent = formatMoney(sum);
+        if (amountInput) {
+          amountInput.value = sum > 0 ? sum.toFixed(2) : '0.00';
+        }
+        updateCalculations();
+      }
+
+      function addFeeHeadRow(type = 'school_fee', title = '', amount = 0) {
+        const idx = feeHeadsContainer.querySelectorAll('.fee-head-row').length;
+        const defaultTitle = title || feeTypeTitles[type] || 'Fee Head';
+
+        const tr = document.createElement('tr');
+        tr.className = 'fee-head-row';
+        tr.setAttribute('data-index', idx);
+        tr.innerHTML = `
+          <td>
+            <select name="fee_items[${idx}][fee_type]" class="form-select form-select-sm select-fee-type" required>
+              <option value="school_fee" ${type === 'school_fee' ? 'selected' : ''}>School Fee / Class Fee</option>
+              <option value="tuition" ${type === 'tuition' ? 'selected' : ''}>Tuition Fee (Separate)</option>
+              <option value="admission" ${type === 'admission' ? 'selected' : ''}>Admission / Registration Fee</option>
+              <option value="examination" ${type === 'examination' ? 'selected' : ''}>Examination Fee</option>
+              <option value="transport" ${type === 'transport' ? 'selected' : ''}>Transport Fee</option>
+              <option value="hostel" ${type === 'hostel' ? 'selected' : ''}>Hostel Fee</option>
+              <option value="miscellaneous" ${type === 'miscellaneous' ? 'selected' : ''}>Miscellaneous / Other</option>
+            </select>
+          </td>
+          <td>
+            <input type="text" name="fee_items[${idx}][title]" class="form-control form-control-sm input-fee-title" value="${defaultTitle}" placeholder="e.g. School Monthly Fee" required>
+          </td>
+          <td>
+            <input type="number" step="0.01" min="0" name="fee_items[${idx}][amount]" class="form-control form-control-sm input-fee-amount" value="${parseFloat(amount || 0).toFixed(2)}" placeholder="0.00" required>
+          </td>
+          <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-fee-head px-2 py-1" title="Remove this fee head">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 align-middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              Delete
+            </button>
+          </td>
+        `;
+
+        feeHeadsContainer.appendChild(tr);
+
+        const typeSelect = tr.querySelector('.select-fee-type');
+        const titleInput = tr.querySelector('.input-fee-title');
+        const amtInput = tr.querySelector('.input-fee-amount');
+
+        typeSelect.addEventListener('change', function() {
+          if (!titleInput.value || Object.values(feeTypeTitles).includes(titleInput.value)) {
+            titleInput.value = feeTypeTitles[this.value] || 'Fee Head';
+          }
+        });
+
+        amtInput.addEventListener('input', calculateFeeHeadsSum);
+
+        reindexFeeHeads();
+        try {
+          if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+          }
+        } catch (e) {}
+      }
+
+      if (btnAddFeeHead) {
+        btnAddFeeHead.addEventListener('click', function() {
+          addFeeHeadRow('miscellaneous', 'Miscellaneous / Extra Fee', 0);
+        });
+      }
+
+      feeHeadsContainer.addEventListener('click', function(e) {
+        const btnRemove = e.target.closest('.btn-remove-fee-head');
+        if (btnRemove) {
+          const row = btnRemove.closest('.fee-head-row');
+          if (row) {
+            const allRows = feeHeadsContainer.querySelectorAll('.fee-head-row');
+            if (allRows.length > 1) {
+              row.remove();
+              reindexFeeHeads();
+            }
+          }
+        }
       });
 
-      statusSelect.addEventListener('change', updateCalculations);
+      // Bind input events for existing pre-rendered rows
+      feeHeadsContainer.querySelectorAll('.fee-head-row').forEach(row => {
+        const typeSelect = row.querySelector('.select-fee-type');
+        const titleInput = row.querySelector('.input-fee-title');
+        const amtInput = row.querySelector('.input-fee-amount');
 
-      // Trigger student change on load for edit mode
+        if (typeSelect && titleInput) {
+          typeSelect.addEventListener('change', function() {
+            if (!titleInput.value || Object.values(feeTypeTitles).includes(titleInput.value)) {
+              titleInput.value = feeTypeTitles[this.value] || 'Fee Head';
+            }
+          });
+        }
+        if (amtInput) {
+          amtInput.addEventListener('input', calculateFeeHeadsSum);
+        }
+      });
+
+      // Class Filter Logic
+      function filterStudentsByClass() {
+        const selectedClass = classFilterSelect ? classFilterSelect.value : '';
+        const currentSelectedVal = $studentSelect.val();
+
+        $studentSelect.find('option').each(function () {
+          const optClass = $(this).attr('data-class') || $(this).data('class') || '';
+          if (!$(this).val()) return;
+
+          if (!selectedClass || optClass.toString().toLowerCase() === selectedClass.toString().toLowerCase()) {
+            $(this).prop('disabled', false);
+          } else {
+            if ($(this).val() == currentSelectedVal) {
+              $(this).prop('disabled', false);
+            } else {
+              $(this).prop('disabled', true);
+            }
+          }
+        });
+
+        $studentSelect.trigger('change.select2');
+      }
+
+      if (classFilterSelect) {
+        classFilterSelect.addEventListener('change', filterStudentsByClass);
+      }
+
+      function syncFeeHeads() {
+        const val = $studentSelect.val();
+        if (!val) return;
+
+        const optEl = $studentSelect.find('option:selected')[0] || $studentSelect.find('option[value="' + val + '"]')[0];
+        if (!optEl) return;
+
+        const studentBaseFee  = parseFloat(optEl.getAttribute('data-base-fee')  || 0);
+        const studentDiscount = parseFloat(optEl.getAttribute('data-discount')   || 0);
+
+        const stData        = (window.STUDENT_FEE_DATA && (window.STUDENT_FEE_DATA[val] || window.STUDENT_FEE_DATA[String(val)] || window.STUDENT_FEE_DATA[parseInt(val)])) || {};
+        const siblingsData  = Array.isArray(stData.siblings) ? stData.siblings : [];
+        const unpaidData    = Array.isArray(stData.unpaid)   ? stData.unpaid   : [];
+
+        feeHeadsContainer.innerHTML = '';
+
+        // Primary student fee head
+        addFeeHeadRow('school_fee', 'School Fee / Class Fee', studentBaseFee);
+
+        const includeSibling = includeSiblingFeeCheckbox && includeSiblingFeeCheckbox.checked;
+        const includeDues    = includePreviousDuesCheckbox && includePreviousDuesCheckbox.checked;
+
+        let totalSibFeeSum = 0;
+        if (includeSibling && siblingsData.length > 0) {
+          siblingsData.forEach(sib => {
+            const sibFee = parseFloat(sib.net_fee || 0);
+            totalSibFeeSum += sibFee;
+            if (sibFee > 0) {
+              addFeeHeadRow('school_fee', 'Sibling Fee - ' + sib.name + ' (' + sib.admission_no + ')', sibFee);
+            }
+          });
+        }
+
+        if (includeDues) {
+          let prevDuesSum = 0;
+          unpaidData.forEach(inv => {
+            prevDuesSum += parseFloat(inv.due_balance || 0);
+          });
+
+          if (includeSibling && siblingsData.length > 0) {
+            siblingsData.forEach(sib => {
+              if (sib.unpaid && Array.isArray(sib.unpaid)) {
+                sib.unpaid.forEach(sinv => {
+                  prevDuesSum += parseFloat(sinv.due_balance || 0);
+                });
+              }
+            });
+          }
+
+          if (prevDuesSum > 0) {
+            addFeeHeadRow('miscellaneous', 'Previous Pending Arrears', prevDuesSum);
+          }
+        }
+
+        if (discountInput) {
+          discountInput.value = studentDiscount > 0 ? studentDiscount.toFixed(2) : '0.00';
+        }
+
+        calculateFeeHeadsSum();
+
+        if (siblingBreakdownText) {
+          const stNetFee = Math.max(0, studentBaseFee - studentDiscount);
+          siblingBreakdownText.textContent = `Student Fee: ${formatMoney(stNetFee)} | Sibling Fee: ${formatMoney(totalSibFeeSum)}`;
+        }
+        if (combinedTotalDisplay) {
+          const grossAmt = parseFloat(amountInput ? amountInput.value : 0) || 0;
+          const discAmt  = parseFloat(discountInput ? discountInput.value : 0) || 0;
+          combinedTotalDisplay.textContent = `Combined Total: ${formatMoney(Math.max(0, grossAmt - discAmt))}`;
+        }
+      }
+
+      function renderPreviousDues(unpaidInvoices, siblingUnpaidInvoices) {
+        let allUnpaid = [...(unpaidInvoices || [])];
+        if (siblingUnpaidInvoices && siblingUnpaidInvoices.length > 0) {
+          siblingUnpaidInvoices.forEach(sUnpaid => {
+            if (Array.isArray(sUnpaid)) {
+              allUnpaid = allUnpaid.concat(sUnpaid);
+            }
+          });
+        }
+
+        if (!allUnpaid || allUnpaid.length === 0) {
+          if (previousDuesBox) previousDuesBox.classList.add('d-none');
+          return;
+        }
+
+        if (previousDuesBox) previousDuesBox.classList.remove('d-none');
+
+        let totalPrevDues = 0;
+        let html = '<div class="table-responsive"><table class="table table-sm table-bordered bg-white mb-0 fs-7 align-middle">';
+        html += '<thead class="table-light"><tr><th>Invoice #</th><th>Fee Month</th><th>Type</th><th>Due Date</th><th>Due Balance</th></tr></thead><tbody>';
+
+        allUnpaid.forEach(inv => {
+          totalPrevDues += parseFloat(inv.due_balance || 0);
+          html += `
+            <tr>
+              <td class="fw-bold text-primary">${inv.invoice_no}</td>
+              <td>${inv.fee_month}</td>
+              <td>${inv.fee_type}</td>
+              <td class="text-danger">${inv.due_date}</td>
+              <td class="fw-bold text-danger">${formatMoney(inv.due_balance)}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table></div>';
+        if (previousDuesContainer) previousDuesContainer.innerHTML = html;
+        if (previousDuesTotalDisplay) previousDuesTotalDisplay.textContent = `Total Previous Pending Dues: ${formatMoney(totalPrevDues)}`;
+      }
+
+      function renderSiblingsInfo(siblings) {
+        if (!siblings || siblings.length === 0) {
+          if (siblingInfoBox) siblingInfoBox.classList.add('d-none');
+          return;
+        }
+
+        if (siblingInfoBox) siblingInfoBox.classList.remove('d-none');
+
+        let html = '<div class="row g-2">';
+        siblings.forEach(sib => {
+          html += `
+            <div class="col-md-6">
+              <div class="bg-white p-2 rounded border shadow-sm d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="fw-bold text-dark d-block">${sib.name}</span>
+                  <small class="text-muted">${sib.class_sec} | Adm No: ${sib.admission_no}</small>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-8">${sib.fee_plan}</span>
+                  <span class="fw-bold text-dark d-block mt-1">${formatMoney(sib.net_fee)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+
+        if (siblingsListContainer) siblingsListContainer.innerHTML = html;
+      }
+
+      let isHandlingStudentChange = false;
+
+      function handleStudentChange(isInitialLoad = false) {
+        if (isHandlingStudentChange) return;
+        isHandlingStudentChange = true;
+
+        try {
+          const val = $studentSelect.val();
+
+          if (!val) {
+            infoBox.classList.add('d-none');
+            if (siblingInfoBox) siblingInfoBox.classList.add('d-none');
+            if (previousDuesBox) previousDuesBox.classList.add('d-none');
+            currentSiblingsData = [];
+            currentUnpaidData = [];
+            if (!isInitialLoad) {
+              feeHeadsContainer.innerHTML = '';
+              addFeeHeadRow('school_fee', 'School Fee / Class Fee', 0);
+              calculateFeeHeadsSum();
+            }
+            return;
+          }
+
+          const optEl = $studentSelect.find('option:selected')[0] || $studentSelect.find('option[value="' + val + '"]')[0];
+          if (!optEl) return;
+
+          infoBox.classList.remove('d-none');
+
+          stAdmNo.textContent   = optEl.getAttribute('data-no') || '-';
+          const stClass         = optEl.getAttribute('data-class') || '-';
+          const stSec           = optEl.getAttribute('data-section') || '';
+          stClassSec.textContent = stClass + (stSec ? ' (' + stSec + ')' : '');
+          stFather.textContent  = optEl.getAttribute('data-father') || '-';
+
+          const planName = optEl.getAttribute('data-fee-plan') || 'Monthly';
+          const netFee   = parseFloat(optEl.getAttribute('data-net-fee') || 0);
+
+          if (stFeePlanBadge) stFeePlanBadge.textContent = `Fee Plan: ${planName}`;
+          if (stFeeDisplay)   stFeeDisplay.textContent   = formatMoney(netFee);
+
+          if (classFilterSelect && stClass && classFilterSelect.value !== stClass) {
+            classFilterSelect.value = stClass;
+            filterStudentsByClass();
+          }
+
+          const sessionId = optEl.getAttribute('data-session');
+          if (sessionId && sessionSelect && !sessionSelect.value) {
+            sessionSelect.value = sessionId;
+          }
+
+          const _stData = (window.STUDENT_FEE_DATA && (window.STUDENT_FEE_DATA[val] || window.STUDENT_FEE_DATA[String(val)] || window.STUDENT_FEE_DATA[parseInt(val)])) || {};
+          currentSiblingsData = Array.isArray(_stData.siblings) ? _stData.siblings : [];
+          currentUnpaidData   = Array.isArray(_stData.unpaid)   ? _stData.unpaid   : [];
+
+          renderSiblingsInfo(currentSiblingsData);
+
+          const siblingUnpaid = currentSiblingsData.map(s => s.unpaid || []);
+          renderPreviousDues(currentUnpaidData, siblingUnpaid);
+
+          if (!isInitialLoad) {
+            syncFeeHeads();
+          } else {
+            calculateFeeHeadsSum();
+          }
+        } finally {
+          isHandlingStudentChange = false;
+        }
+      }
+
+      $studentSelect.on('change', function() { handleStudentChange(false); });
+      if (includeSiblingFeeCheckbox) includeSiblingFeeCheckbox.addEventListener('change', syncFeeHeads);
+      if (includePreviousDuesCheckbox) includePreviousDuesCheckbox.addEventListener('change', syncFeeHeads);
+
+      amountInput.addEventListener('input', updateCalculations);
+      discountInput.addEventListener('input', updateCalculations);
+      paidAmountInput.addEventListener('input', updateCalculations);
+
       if ($studentSelect.val()) {
-        $studentSelect.trigger('change');
+        handleStudentChange(true);
       }
+      updateCalculations();
 
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
+      try {
+        if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+          lucide.createIcons();
+        }
+      } catch (e) {}
     });
   </script>
 @endpush
