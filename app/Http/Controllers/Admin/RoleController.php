@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -14,13 +15,16 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $roles = Role::all()->map(function ($role) {
-            $role->user_count = User::where('role', $role->name)->count();
+            $role->user_count = User::where('role_id', $role->id)
+                ->orWhere('role', $role->name)
+                ->count();
             return $role;
         });
 
-        $availablePermissions = Role::availablePermissions();
+        $availablePermissionsGrouped = Role::availablePermissionsGrouped();
+        $allPermissions = Permission::orderBy('module')->orderBy('id')->get();
 
-        return view('pages.admin.roles.index', compact('roles', 'availablePermissions'));
+        return view('pages.admin.roles.index', compact('roles', 'availablePermissionsGrouped', 'allPermissions'));
     }
 
     public function store(Request $request)
@@ -31,11 +35,23 @@ class RoleController extends Controller
             'permissions' => 'nullable|array',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
-        $validated['permissions'] = $request->input('permissions', []);
-        $validated['is_system']   = false;
+        $permissionsArray = $request->input('permissions', []);
 
-        Role::create($validated);
+        $role = Role::create([
+            'name'        => $validated['name'],
+            'slug'        => Str::slug($validated['name']),
+            'description' => $validated['description'] ?? null,
+            'permissions' => $permissionsArray,
+            'is_system'   => false,
+        ]);
+
+        // Sync relational DB permissions
+        if (!empty($permissionsArray)) {
+            $permIds = Permission::whereIn('name', $permissionsArray)->pluck('id')->toArray();
+            $role->permissionsRelation()->sync($permIds);
+        } else {
+            $role->permissionsRelation()->sync([]);
+        }
 
         return redirect()->route('roles.index')->with('success', 'Role created successfully with permissions.');
     }
@@ -48,16 +64,24 @@ class RoleController extends Controller
             'permissions' => 'nullable|array',
         ]);
 
-        $validated['permissions'] = $request->input('permissions', []);
+        $permissionsArray = $request->input('permissions', []);
 
-        // Do not change slug for system roles
+        $updateData = [
+            'description' => $validated['description'] ?? null,
+            'permissions' => $permissionsArray,
+        ];
+
+        // Do not change name/slug for system roles
         if (!$role->is_system) {
-            $validated['slug'] = Str::slug($validated['name']);
-        } else {
-            unset($validated['name']);
+            $updateData['name'] = $validated['name'];
+            $updateData['slug'] = Str::slug($validated['name']);
         }
 
-        $role->update($validated);
+        $role->update($updateData);
+
+        // Sync relational DB permissions
+        $permIds = Permission::whereIn('name', $permissionsArray)->pluck('id')->toArray();
+        $role->permissionsRelation()->sync($permIds);
 
         return redirect()->route('roles.index')->with('success', 'Role and permissions updated successfully.');
     }
@@ -68,6 +92,12 @@ class RoleController extends Controller
             return redirect()->back()->with('error', 'System roles cannot be deleted.');
         }
 
+        $userCount = User::where('role_id', $role->id)->orWhere('role', $role->name)->count();
+        if ($userCount > 0) {
+            return redirect()->back()->with('error', "Cannot delete role '{$role->name}' because it is assigned to {$userCount} user(s).");
+        }
+
+        $role->permissionsRelation()->detach();
         $role->delete();
 
         return redirect()->route('roles.index')->with('success', 'Role deleted successfully.');

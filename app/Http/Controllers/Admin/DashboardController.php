@@ -29,6 +29,8 @@ class DashboardController extends Controller
             return $this->principalDashboard($request);
         } elseif ($user && $user->hasRole('teacher')) {
             return $this->teacherDashboard($request);
+        } elseif ($user && $user->hasRole('operator')) {
+            return $this->operatorDashboard($request);
         } elseif ($user && $user->hasRole('staff')) {
             return $this->staffDashboard($request);
         } elseif ($user && $user->hasRole('student')) {
@@ -158,6 +160,28 @@ class DashboardController extends Controller
         ));
     }
 
+    protected function operatorDashboard(Request $request)
+    {
+        $user = auth()->user();
+        $totalStudents = Schema::hasTable('students') ? Student::count() : 0;
+        $todayAdmissionsCount = Schema::hasTable('admissions')
+            ? Admission::whereDate('created_at', Carbon::today())->count()
+            : 0;
+        $pendingFeesCount = Schema::hasTable('fee_managements')
+            ? FeeManagement::whereIn('status', ['Unpaid', 'Pending', 'Overdue'])->count()
+            : 0;
+        $recentVisitors = (Schema::hasTable('visitors') && $user->hasPermission('visitors.view'))
+            ? Visitor::latest('check_in_time')->take(5)->get()
+            : collect();
+
+        return view('pages.dashboards.staff', compact(
+            'totalStudents',
+            'todayAdmissionsCount',
+            'pendingFeesCount',
+            'recentVisitors'
+        ));
+    }
+
     protected function principalDashboard(Request $request)
     {
         $totalStudents = Schema::hasTable('students') ? Student::count() : 0;
@@ -177,6 +201,9 @@ class DashboardController extends Controller
 
     protected function teacherDashboard(Request $request)
     {
+        $user = auth()->user();
+        $staffRecord = $user->staff;
+
         $totalStudents = Schema::hasTable('students') ? Student::count() : 0;
         $attendancePercentage = 96.0;
         $homeworkList = Schema::hasTable('home_works') ? HomeWork::latest()->take(5)->get() : collect();
@@ -186,16 +213,22 @@ class DashboardController extends Controller
             'totalStudents',
             'attendancePercentage',
             'homeworkList',
-            'upcomingExams'
+            'upcomingExams',
+            'staffRecord'
         ));
     }
 
     protected function staffDashboard(Request $request)
     {
+        $user = auth()->user();
         $totalStudents = Schema::hasTable('students') ? Student::count() : 0;
-        $visitorsInsideCount = Schema::hasTable('visitors') ? Visitor::where('status', 'Checked-In')->count() : 0;
-        $recentVisitors = Schema::hasTable('visitors') ? Visitor::latest('check_in_time')->take(5)->get() : collect();
-        $feeCollectionThisMonth = Schema::hasTable('fee_managements')
+        $visitorsInsideCount = (Schema::hasTable('visitors') && $user->hasPermission('visitors.view'))
+            ? Visitor::where('status', 'Checked-In')->count()
+            : 0;
+        $recentVisitors = (Schema::hasTable('visitors') && $user->hasPermission('visitors.view'))
+            ? Visitor::latest('check_in_time')->take(5)->get()
+            : collect();
+        $feeCollectionThisMonth = (Schema::hasTable('fee_managements') && $user->hasPermission('fees.view'))
             ? FeeManagement::where('status', 'Paid')->whereMonth('created_at', Carbon::now()->month)->sum('amount')
             : 0;
 
@@ -209,10 +242,25 @@ class DashboardController extends Controller
 
     protected function studentDashboard(Request $request)
     {
-        $homeworkList = Schema::hasTable('home_works') ? HomeWork::latest()->take(5)->get() : collect();
+        $user = auth()->user();
+        $studentRecord = $user->student;
+
+        if (!$studentRecord) {
+            $studentRecord = Student::where('email', $user->email)
+                ->orWhere(DB::raw("LOWER(CONCAT(first_name, ' ', last_name))"), strtolower($user->name))
+                ->first();
+        }
+
+        $className = $studentRecord->class_name ?? null;
+
+        $homeworkList = (Schema::hasTable('home_works') && $className)
+            ? HomeWork::where('class_name', $className)->latest()->take(5)->get()
+            : (Schema::hasTable('home_works') ? HomeWork::latest()->take(5)->get() : collect());
+
         $upcomingExams = Schema::hasTable('examinations') ? Examination::latest()->take(4)->get() : collect();
 
         return view('pages.dashboards.student', compact(
+            'studentRecord',
             'homeworkList',
             'upcomingExams'
         ));
@@ -220,10 +268,25 @@ class DashboardController extends Controller
 
     protected function parentDashboard(Request $request)
     {
+        $user = auth()->user();
+        $cnic = $user->father_cnic;
+
+        $children = collect();
+        if ($cnic) {
+            $children = Student::where('father_cnic', $cnic)
+                ->orWhere('guardian_cnic', $cnic)
+                ->get();
+        }
+
+        if ($children->isEmpty()) {
+            $children = Student::latest()->take(2)->get();
+        }
+
         $upcomingMeetings = Schema::hasTable('meetings') ? Meeting::latest()->take(4)->get() : collect();
         $upcomingExams = Schema::hasTable('examinations') ? Examination::latest()->take(4)->get() : collect();
 
         return view('pages.dashboards.parent', compact(
+            'children',
             'upcomingMeetings',
             'upcomingExams'
         ));

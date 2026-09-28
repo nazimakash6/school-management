@@ -595,7 +595,7 @@
             @endif
 
             <!-- System Administration Section -->
-            @if ($u->hasPermission('users.manage') || $u->hasPermission('roles.manage') || $u->hasPermission('security.manage'))
+            @if ($u->hasPermission('users.view') || $u->hasPermission('users.manage') || $u->hasPermission('roles.view') || $u->hasPermission('roles.manage') || $u->hasPermission('security.view') || $u->hasPermission('security.manage'))
                 <li
                     class="sidebar-section-group {{ request()->routeIs('users.*', 'roles.*', 'security.*') ? 'open' : '' }}"
                     data-section="system"
@@ -608,7 +608,7 @@
                         <i data-lucide="chevron-down" class="sidebar-section-arrow"></i>
                     </div>
                     <ul class="sidebar-section-menu">
-                        @if ($u->hasPermission('users.manage'))
+                        @if ($u->hasPermission('users.view') || $u->hasPermission('users.manage'))
                             <li class="sidebar-item">
                                 <a
                                     href="{{ route('users.index') }}"
@@ -619,7 +619,7 @@
                                 >
                             </li>
                         @endif
-                        @if ($u->hasPermission('roles.manage'))
+                        @if ($u->hasPermission('roles.view') || $u->hasPermission('roles.manage'))
                             <li class="sidebar-item">
                                 <a
                                     href="{{ route('roles.index') }}"
@@ -630,7 +630,7 @@
                                 >
                             </li>
                         @endif
-                        @if ($u->hasPermission('security.manage'))
+                        @if ($u->hasPermission('security.view') || $u->hasPermission('security.manage'))
                             <li class="sidebar-item">
                                 <a
                                     href="{{ route('security.index') }}"

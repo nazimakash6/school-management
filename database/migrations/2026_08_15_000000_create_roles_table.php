@@ -47,8 +47,8 @@ return new class extends Migration
                     'updated_at' => now(),
                 ],
                 [
-                    'name' => 'Teachers',
-                    'slug' => 'teachers',
+                    'name' => 'Teacher',
+                    'slug' => 'teacher',
                     'description' => 'Access to student list, attendance, classwork, homework, and examination grading.',
                     'is_system' => true,
                     'permissions' => json_encode([
@@ -59,8 +59,8 @@ return new class extends Migration
                     'updated_at' => now(),
                 ],
                 [
-                    'name' => 'Staff Users',
-                    'slug' => 'staff-users',
+                    'name' => 'Staff',
+                    'slug' => 'staff',
                     'description' => 'General staff access for inventory, visitors, and daily school operations.',
                     'is_system' => true,
                     'permissions' => json_encode([

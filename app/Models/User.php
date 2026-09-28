@@ -3,20 +3,24 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'last_login_at', 'last_login_ip', 'password_changed_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'role_id', 'student_id', 'staff_id', 'father_cnic', 'status', 'last_login_at', 'last_login_ip', 'password_changed_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     public const ROLE_ADMIN = 'Admin';
+    public const ROLE_OPERATOR = 'Operator';
     public const ROLE_DIRECTOR = 'Director / Owner';
     public const ROLE_PRINCIPAL = 'Principal';
     public const ROLE_ACCOUNTANT = 'Accountant';
@@ -33,6 +37,7 @@ class User extends Authenticatable
     {
         return [
             self::ROLE_ADMIN,
+            self::ROLE_OPERATOR,
             self::ROLE_DIRECTOR,
             self::ROLE_PRINCIPAL,
             self::ROLE_ACCOUNTANT,
@@ -49,6 +54,33 @@ class User extends Authenticatable
         return $this->status === self::ACTIVE;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->id === 1 || strtolower(trim($this->email ?? '')) === 'admin@school.com';
+    }
+
+    public function roleRelation(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class, 'student_id');
+    }
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'staff_id');
+    }
+
+    public function directPermissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'permission_user')
+            ->withPivot('is_granted')
+            ->withTimestamps();
+    }
+
     public function hasRole(string $role): bool
     {
         $userRole = strtolower(trim($this->role ?? ''));
@@ -58,11 +90,16 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->roleRelation && strtolower(trim($this->roleRelation->name)) === $targetRole) {
+            return true;
+        }
+
         $aliases = [
             'admin'     => ['admin', 'director', 'director / owner', 'super admin', 'owner'],
+            'operator'  => ['operator', 'receptionist'],
             'principal' => ['principal', 'principle'],
             'teacher'   => ['teacher', 'teachers'],
-            'staff'     => ['staff', 'staff users', 'accountant', 'receptionist'],
+            'staff'     => ['staff', 'staff users', 'accountant', 'receptionist', 'operator'],
             'student'   => ['student', 'students'],
             'parent'    => ['parent', 'parents', 'guardian'],
         ];
@@ -89,32 +126,59 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        if ($this->hasRole('admin')) {
+        // Super admin or admin role gets full access
+        if ($this->hasRole('admin') || $this->hasRole('director / owner') || $this->isSuperAdmin()) {
             return true;
         }
 
-        $roleObj = \App\Models\Role::where('name', $this->role)
-            ->orWhere('slug', \Illuminate\Support\Str::slug($this->role ?? ''))
+        // 1. Direct User Permission check (Allow vs Deny)
+        $directPermission = $this->directPermissions()
+            ->where('name', $permission)
             ->first();
 
-        if (!$roleObj || empty($roleObj->permissions)) {
+        if ($directPermission) {
+            return (bool) $directPermission->pivot->is_granted;
+        }
+
+        // 2. Role Permissions check
+        $roleObj = $this->roleRelation;
+        if (!$roleObj && !empty($this->role)) {
+            $roleObj = Role::where('name', $this->role)
+                ->orWhere('slug', Str::slug($this->role))
+                ->first();
+        }
+
+        if (!$roleObj) {
             return false;
         }
 
-        if (in_array('*', $roleObj->permissions, true) || in_array($permission, $roleObj->permissions, true)) {
+        // Check relational DB permissions if loaded or present
+        $dbPermissionNames = $roleObj->permissionsRelation()->pluck('name')->toArray();
+        if (in_array($permission, $dbPermissionNames, true)) {
             return true;
         }
 
-        // Fuzzy match base module (e.g. 'students', 'teachers', 'fees', 'attendance')
-        $baseModule = explode('.', $permission)[0] ?? $permission;
-        foreach ($roleObj->permissions as $p) {
-            $pBase = explode('.', $p)[0] ?? $p;
-            if ($pBase === $baseModule) {
-                return true;
-            }
+        // Check JSON permissions array on Role model
+        $permissions = $roleObj->permissions ?? [];
+        if (in_array('*', $permissions, true) || in_array($permission, $permissions, true)) {
+            return true;
+        }
+
+        // Module-wide wildcard match (e.g. 'students.manage' or 'students.*')
+        $parts = explode('.', $permission);
+        $module = $parts[0] ?? $permission;
+
+        if (in_array("{$module}.*", $permissions, true) || in_array("{$module}.manage", $permissions, true)) {
+            return true;
         }
 
         return false;
+    }
+
+    public function getDirectPermissionState(string $permissionName): ?bool
+    {
+        $dp = $this->directPermissions()->where('name', $permissionName)->first();
+        return $dp ? (bool) $dp->pivot->is_granted : null;
     }
 
     public function loginHistories(): HasMany
@@ -132,11 +196,6 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\ActivityLog::class);
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [

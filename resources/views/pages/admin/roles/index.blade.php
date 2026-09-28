@@ -50,7 +50,7 @@
         @foreach($roles as $role)
         @php
             $permCount = is_array($role->permissions) ? count($role->permissions) : 0;
-            $isAll = is_array($role->permissions) && in_array('*', $role->permissions);
+            $isAll = is_array($role->permissions) && (in_array('*', $role->permissions) || $permCount >= 50);
         @endphp
         <div class="col-xl-4 col-md-6">
             <div class="card border-0 shadow-sm rounded-3 h-100 position-relative">
@@ -78,7 +78,7 @@
                                 <div class="text-muted small fw-semibold">Permissions</div>
                                 <div>
                                     @if($isAll)
-                                        <span class="badge bg-danger bg-opacity-10 text-danger border">Full Access (*)</span>
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border">Full Access</span>
                                     @else
                                         <span class="badge bg-primary bg-opacity-10 text-primary border">{{ $permCount }} permissions</span>
                                     @endif
@@ -117,116 +117,128 @@
 
 <!-- Modal: Add Custom Role -->
 <div class="modal fade" id="addRoleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form method="POST" action="{{ route('roles.store') }}" class="modal-content border-0 shadow" style="max-height: 88vh; display: flex; flex-direction: column;">
+            @csrf
+            <div class="modal-header border-bottom flex-shrink-0">
                 <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                     <i data-lucide="shield-plus" class="text-primary" style="width:1.2rem;height:1.2rem;"></i>
                     Create Custom Role
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ route('roles.store') }}">
-                @csrf
-                <div class="modal-body p-4">
-                    <div class="mb-3">
+            <div class="modal-body p-4 flex-grow-1 overflow-auto" style="max-height: calc(88vh - 130px); overflow-y: auto !important;">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold text-dark">Role Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Lab Supervisor, Exam Manager" required>
                     </div>
-                    <div class="mb-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold text-dark">Description</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="Describe the purpose of this role..."></textarea>
+                        <input type="text" name="description" class="form-control" placeholder="Describe the purpose of this role...">
                     </div>
+                </div>
 
-                    <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">Assign Permissions</h6>
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 sticky-top bg-white pt-1">
+                    <h6 class="fw-bold text-dark mb-0">Assign Permissions</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary global-select-all" data-target="#addRoleModal">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary global-unselect-all" data-target="#addRoleModal">Unselect All</button>
+                    </div>
+                </div>
 
-                    <div class="row g-3">
-                        @foreach($availablePermissions as $category => $perms)
-                        <div class="col-md-6">
-                            <div class="card border shadow-none rounded-3 mb-2">
-                                <div class="card-header bg-light py-2 fw-semibold text-dark small d-flex justify-content-between align-items-center">
-                                    <span>{{ $category }}</span>
-                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 select-all-cat">Select All</button>
+                <div class="row g-3">
+                    @foreach($availablePermissionsGrouped as $category => $perms)
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border shadow-none rounded-3 h-100">
+                            <div class="card-header bg-light py-2 fw-semibold text-dark small d-flex justify-content-between align-items-center">
+                                <span>{{ $category }}</span>
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 select-all-cat fs-8">Select All</button>
+                            </div>
+                            <div class="card-body p-3">
+                                @foreach($perms as $key => $label)
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input perm-checkbox" type="checkbox" name="permissions[]" value="{{ $key }}" id="add_perm_{{ Str::slug($key) }}">
+                                    <label class="form-check-label text-dark small" for="add_perm_{{ Str::slug($key) }}">
+                                        {{ $label }}
+                                    </label>
                                 </div>
-                                <div class="card-body p-3">
-                                    @foreach($perms as $key => $label)
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input perm-checkbox" type="checkbox" name="permissions[]" value="{{ $key }}" id="add_perm_{{ Str::slug($key) }}">
-                                        <label class="form-check-label text-dark small" for="add_perm_{{ Str::slug($key) }}">
-                                            {{ $label }}
-                                        </label>
-                                    </div>
-                                    @endforeach
-                                </div>
+                                @endforeach
                             </div>
                         </div>
-                        @endforeach
                     </div>
+                    @endforeach
                 </div>
-                <div class="modal-footer border-top bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-semibold">Save New Role</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer border-top bg-light flex-shrink-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Save New Role</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Modal: Edit Role & Permissions -->
 <div class="modal fade" id="editRoleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form id="editRoleForm" method="POST" action="" class="modal-content border-0 shadow" style="max-height: 88vh; display: flex; flex-direction: column;">
+            @csrf
+            @method('PUT')
+            <div class="modal-header border-bottom flex-shrink-0">
                 <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                     <i data-lucide="edit-3" class="text-primary" style="width:1.2rem;height:1.2rem;"></i>
                     Edit Role Permissions: <span id="edit_role_title" class="text-primary"></span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editRoleForm" method="POST" action="">
-                @csrf
-                @method('PUT')
-                <div class="modal-body p-4">
-                    <div class="mb-3" id="edit_name_group">
+            <div class="modal-body p-4 flex-grow-1 overflow-auto" style="max-height: calc(88vh - 130px); overflow-y: auto !important;">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6" id="edit_name_group">
                         <label class="form-label fw-semibold text-dark">Role Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="edit_role_name" class="form-control" required>
                     </div>
-                    <div class="mb-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold text-dark">Description</label>
-                        <textarea name="description" id="edit_role_desc" class="form-control" rows="2"></textarea>
+                        <input type="text" name="description" id="edit_role_desc" class="form-control">
                     </div>
+                </div>
 
-                    <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">Module Access Permissions</h6>
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 sticky-top bg-white pt-1">
+                    <h6 class="fw-bold text-dark mb-0">Module Access Permissions</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary global-select-all" data-target="#editRoleModal">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary global-unselect-all" data-target="#editRoleModal">Unselect All</button>
+                    </div>
+                </div>
 
-                    <div class="row g-3">
-                        @foreach($availablePermissions as $category => $perms)
-                        <div class="col-md-6">
-                            <div class="card border shadow-none rounded-3 mb-2">
-                                <div class="card-header bg-light py-2 fw-semibold text-dark small d-flex justify-content-between align-items-center">
-                                    <span>{{ $category }}</span>
-                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 select-all-cat">Select All</button>
+                <div class="row g-3">
+                    @foreach($availablePermissionsGrouped as $category => $perms)
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border shadow-none rounded-3 h-100">
+                            <div class="card-header bg-light py-2 fw-semibold text-dark small d-flex justify-content-between align-items-center">
+                                <span>{{ $category }}</span>
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 select-all-cat fs-8">Select All</button>
+                            </div>
+                            <div class="card-body p-3">
+                                @foreach($perms as $key => $label)
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input edit-perm-cb" type="checkbox" name="permissions[]" value="{{ $key }}" id="edit_perm_{{ Str::slug($key) }}">
+                                    <label class="form-check-label text-dark small" for="edit_perm_{{ Str::slug($key) }}">
+                                        {{ $label }}
+                                    </label>
                                 </div>
-                                <div class="card-body p-3">
-                                    @foreach($perms as $key => $label)
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input edit-perm-cb" type="checkbox" name="permissions[]" value="{{ $key }}" id="edit_perm_{{ Str::slug($key) }}">
-                                        <label class="form-check-label text-dark small" for="edit_perm_{{ Str::slug($key) }}">
-                                            {{ $label }}
-                                        </label>
-                                    </div>
-                                    @endforeach
-                                </div>
+                                @endforeach
                             </div>
                         </div>
-                        @endforeach
                     </div>
+                    @endforeach
                 </div>
-                <div class="modal-footer border-top bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-semibold">Save Permissions</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer border-top bg-light flex-shrink-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary fw-semibold">Save Permissions</button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
@@ -234,7 +246,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Select all handler for permission categories
+    // Category Select All
     document.querySelectorAll('.select-all-cat').forEach(btn => {
         btn.addEventListener('click', function () {
             const card = this.closest('.card');
@@ -242,6 +254,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(cb => cb.checked = !allChecked);
             this.textContent = allChecked ? 'Select All' : 'Deselect All';
+        });
+    });
+
+    // Global Select All
+    document.querySelectorAll('.global-select-all').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const modal = document.querySelector(this.dataset.target);
+            modal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+        });
+    });
+
+    // Global Unselect All
+    document.querySelectorAll('.global-unselect-all').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const modal = document.querySelector(this.dataset.target);
+            modal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         });
     });
 
