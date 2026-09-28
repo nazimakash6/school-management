@@ -53,25 +53,28 @@
             </div>
         </div>
 
-        <form id="certForm" action="{{ route('certificates.print') }}" method="POST" target="_blank">
-            @csrf
-            <input type="hidden" name="type" value="{{ $type }}" />
+        @if ($type !== 'overall_performance')
+            <form id="certForm" action="{{ route('certificates.print') }}" method="POST" target="_blank" novalidate>
+                @csrf
+                <input type="hidden" name="type" value="{{ $type }}" />
+                <input type="hidden" name="entry_mode" id="entry_mode_input" value="manual" />
 
-            {{-- Hidden fields for experience/appreciation fallback --}}
-            @if ($type === 'experience' || $type === 'appreciation')
-                <input type="hidden" name="student_name" id="h_student_name" />
-                <input type="hidden" name="father_name" id="h_father_name" />
-                <input type="hidden" name="admission_no" id="h_admission_no" />
-                <input type="hidden" name="roll_no" id="h_roll_no" />
-                <input type="hidden" name="date_of_birth" id="h_dob" />
-                <input type="hidden" name="class_name" id="h_class_name" />
-                <input type="hidden" name="section" id="h_section" />
-                <input type="hidden" name="student_photo_url" id="h_student_photo_url" />
-            @endif
-            <input type="hidden" name="session" id="session_input" />
+                {{-- Hidden fields for experience/appreciation fallback --}}
+                @if ($type === 'experience' || $type === 'appreciation')
+                    <input type="hidden" name="student_name" id="h_student_name" />
+                    <input type="hidden" name="father_name" id="h_father_name" />
+                    <input type="hidden" name="admission_no" id="h_admission_no" />
+                    <input type="hidden" name="roll_no" id="h_roll_no" />
+                    <input type="hidden" name="date_of_birth" id="h_dob" />
+                    <input type="hidden" name="class_name" id="h_class_name" />
+                    <input type="hidden" name="section" id="h_section" />
+                    <input type="hidden" name="student_photo_url" id="h_student_photo_url" />
+                @endif
+                <input type="hidden" name="session" id="session_input" />
+        @endif
 
             <div class="row g-4">
-                <div class="col-lg-8">
+                <div class="col-12">
                     @if ($type === 'experience')
                         <!-- ─── STEP 1 FOR EXPERIENCE LETTER: SELECT STAFF MEMBER ──────────────────────────── -->
                         <div class="card border-0 shadow-sm rounded-3 mb-4">
@@ -417,6 +420,44 @@
                             </div>
                         </div>
                     @else
+                        @if ($type === 'overall_performance')
+                            <!-- ─── TAB NAVIGATION BAR (MANUAL vs DYNAMIC) ────────────────────────── -->
+                            <div class="card border-0 shadow-sm rounded-3 mb-4 bg-white">
+                                <div class="card-body p-2 p-md-3">
+                                    <ul class="nav nav-pills nav-justified gap-2" id="certTabList" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active fw-bold py-2.5 px-3 fs-6 d-flex align-items-center justify-content-center gap-2" id="manual-tab" data-bs-toggle="pill" data-bs-target="#tab-manual-pane" type="button" role="tab" aria-controls="tab-manual-pane" aria-selected="true">
+                                                <i data-lucide="edit-3" style="width:1.2rem;height:1.2rem;"></i>
+                                                Manual Form Entry
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link fw-bold py-2.5 px-3 fs-6 d-flex align-items-center justify-content-center gap-2" id="dynamic-tab" data-bs-toggle="pill" data-bs-target="#tab-dynamic-pane" type="button" role="tab" aria-controls="tab-dynamic-pane" aria-selected="false">
+                                                <i data-lucide="database" style="width:1.2rem;height:1.2rem;"></i>
+                                                Dynamic Auto-Fetch Entry
+                                                <span class="badge bg-primary text-white ms-1 rounded-pill" style="font-size:0.75rem;">Modules DB</span>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="tab-content" id="certTabContent">
+                                <!-- ─── TAB 1: MANUAL FORM ENTRY (SEPARATE FORM) ────────────────────── -->
+                                <div class="tab-pane fade show active" id="tab-manual-pane" role="tabpanel" aria-labelledby="manual-tab">
+                                    <form id="manualCertForm" action="{{ route('certificates.print') }}" method="POST" target="_blank" novalidate>
+                                        @csrf
+                                        <input type="hidden" name="type" value="overall_performance" />
+                                        <input type="hidden" name="entry_mode" value="manual" />
+                                        <input type="hidden" name="session" id="session_input" />
+                                        <input type="hidden" name="student_name" id="h_student_name" />
+                                        <input type="hidden" name="father_name" id="h_father_name" />
+                                        <input type="hidden" name="admission_no" id="h_admission_no" />
+                                        <input type="hidden" name="roll_no" id="h_roll_no" />
+                                        <input type="hidden" name="date_of_birth" id="h_dob" />
+                                        <input type="hidden" name="class_name" id="h_class_name" />
+                                        <input type="hidden" name="section" id="h_section" />
+                                        <input type="hidden" name="student_photo_url" id="h_student_photo_url" />
+                        @endif
                         <!-- ─── STEP 1: SELECT ACADEMIC SESSION, CLASS & REGISTERED STUDENT ──────────────────────────── -->
                         <div class="card border-0 shadow-sm rounded-3 mb-4">
                             <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -911,51 +952,388 @@
                                 </div>
                             </div>
                         </div>
-                    @endif
-                </div>
-
-                <!-- Right Sidebar -->
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm rounded-3 sticky-top" style="top: 80px">
-                        <div class="card-body p-4 text-center">
-                            <div
-                                class="mx-auto mb-3 rounded-3 d-flex align-items-center justify-content-center bg-{{ $types[$type]['color'] }} bg-opacity-10"
-                                style="width: 64px; height: 64px"
-                            >
-                                <i
-                                    data-lucide="{{ $types[$type]['icon'] }}"
-                                    class="text-{{ $types[$type]['color'] }}"
-                                    style="width: 1.8rem; height: 1.8rem"
-                                ></i>
-                            </div>
-                            <h6 class="fw-bold text-dark">{{ $types[$type]['title'] }}</h6>
-                            <p class="text-muted small mb-4">Noor Ul Huda Superior School</p>
-
-                            <button
-                                type="submit"
-                                id="generate_btn"
-                                class="btn btn-{{ $types[$type]['color'] }} btn-lg w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-                                disabled
-                            >
-                                <i data-lucide="printer" style="width: 1.2rem; height: 1.2rem"></i>
-                                Generate PDF / Print
-                            </button>
-                            <p class="text-muted small mb-4">Opens in a new tab → use <kbd>Ctrl+P</kbd> to save as PDF</p>
-
-                            <div class="text-start border rounded-3 p-3 bg-light">
-                                <div class="fw-semibold text-dark small mb-2">🖨️ Printing Tips</div>
-                                <ul class="text-muted small mb-0 ps-3" style="line-height: 2">
-                                    <li>Use <strong>A4</strong> paper size</li>
-                                    <li>Set margins to <strong>None</strong></li>
-                                    <li>Enable <strong>Background Graphics</strong></li>
-                                    <li>Use <strong>Portrait</strong> orientation</li>
-                                </ul>
+                        <!-- ─── BOTTOM ACTION / GENERATE PDF CARD ────────────────────────────────────────── -->
+                        <div class="card border-0 shadow-sm rounded-3 mb-4 bg-white border-top border-4 border-{{ $types[$type]['color'] }}">
+                            <div class="card-body p-4">
+                                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center bg-{{ $types[$type]['color'] }} bg-opacity-10 p-3" style="width: 54px; height: 54px; flex-shrink: 0;">
+                                            <i data-lucide="{{ $types[$type]['icon'] }}" class="text-{{ $types[$type]['color'] }}" style="width: 1.6rem; height: 1.6rem"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                                Generate & Print {{ $types[$type]['title'] }}
+                                            </h6>
+                                            <p class="text-muted small mb-0">
+                                                Opens preview in a new tab → use <kbd>Ctrl+P</kbd> to print or save as PDF. 
+                                                <span class="d-none d-lg-inline text-muted ms-1">(Recommended: A4, Portrait, Margins: None, Background Graphics: Enabled)</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
+                                        <a href="{{ route('certificates.index') }}" class="btn btn-outline-secondary px-4 py-2.5 fw-semibold">
+                                            Cancel
+                                        </a>
+                                        <button
+                                            type="submit"
+                                            id="generate_btn"
+                                            class="btn btn-{{ $types[$type]['color'] }} btn-lg px-4 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2"
+                                            disabled
+                                        >
+                                            <i data-lucide="printer" style="width: 1.25rem; height: 1.25rem"></i>
+                                            Generate PDF / Print
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        @if ($type === 'overall_performance')
+                                    </form> <!-- End #manualCertForm -->
+                                </div> <!-- End #tab-manual-pane -->
+
+                                <!-- ─── TAB 2: DYNAMIC AUTO-FETCH ENTRY (SEPARATE FORM) ──────────────── -->
+                                <div class="tab-pane fade" id="tab-dynamic-pane" role="tabpanel" aria-labelledby="dynamic-tab">
+                                    <form id="dynamicCertForm" action="{{ route('certificates.print') }}" method="POST" target="_blank" novalidate>
+                                        @csrf
+                                        <input type="hidden" name="type" value="overall_performance" />
+                                        <input type="hidden" name="entry_mode" value="dynamic" />
+                                        <input type="hidden" name="session" id="dyn_session_hidden_input" />
+                                    <!-- SECTION 1: SELECT ACADEMIC SESSION, CLASS & REGISTERED STUDENT -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                                        <div class="card-header bg-primary bg-opacity-10 py-3 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-primary">1</span>
+                                                Select Academic Session, Class & Registered Student
+                                            </h6>
+                                            <span id="dyn_student_count" class="text-muted small"></span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Academic Session <span class="text-danger">*</span></label>
+                                                    <select id="dyn_session_picker" class="form-select form-select-lg">
+                                                        <option value="">— Select Academic Session —</option>
+                                                        @foreach ($academicSessions as $sess)
+                                                            <option value="{{ $sess->id }}" data-name="{{ $sess->session_name }}" {{ $loop->first ? 'selected' : '' }}>
+                                                                Academic Session {{ $sess->session_name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Select Class <span class="text-danger">*</span></label>
+                                                    <select id="dyn_class_picker" class="form-select form-select-lg">
+                                                        <option value="" selected>— Select Class —</option>
+                                                        @foreach ($classes as $cls)
+                                                            <option value="{{ $cls }}">{{ $cls }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div id="dyn_student_search_wrap" style="display: none">
+                                                        <label class="form-label fw-semibold text-dark">Search Student <span class="text-muted fw-normal">(by name, adm# or roll#)</span></label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-white"><i data-lucide="search" style="width:.9rem;height:.9rem;"></i></span>
+                                                            <input type="text" id="dyn_student_search_input" class="form-control" placeholder="Search student name, adm no..." />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12" id="dyn_students_loading" style="display: none">
+                                                    <div class="text-center py-3 text-muted">
+                                                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                                        Fetching registered students for selected class...
+                                                    </div>
+                                                </div>
+                                                <div class="col-12" id="dyn_no_students" style="display: none">
+                                                    <div class="alert alert-warning mb-0 small">No students found for this class.</div>
+                                                </div>
+                                                <div class="col-12" id="dyn_student_select_wrapper">
+                                                    <label class="form-label fw-semibold text-dark">Select Registered Student <span class="text-muted fw-normal">(Auto-fetches all module data from Database)</span></label>
+                                                    <select id="dyn_student_dropdown" class="form-select form-select-lg student-select-box" size="5" disabled>
+                                                        <option value="">— Select Class First —</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 2: STUDENT PARTICULARS & PROFILE INFORMATION -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                                        <div class="card-header bg-white py-3 border-bottom">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-secondary">2</span>
+                                                Student Particulars & Profile Information <span class="text-muted fw-normal fs-6">(Auto-fills from dropdown or edit manually)</span>
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Student Full Name <span class="text-danger">*</span></label>
+                                                    <input type="text" id="dyn_student_name" name="student_name" class="form-control form-control-lg fw-bold text-dark" placeholder="Select student from list above..." />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Father's Name</label>
+                                                    <input type="text" id="dyn_father_name" name="father_name" class="form-control form-control-lg" placeholder="Father's name..." />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Class Name</label>
+                                                    <input type="text" id="dyn_class_name" name="class_name" class="form-control" placeholder="e.g. Class 5th" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Section</label>
+                                                    <input type="text" id="dyn_section" name="section" class="form-control" placeholder="e.g. A" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Roll Number</label>
+                                                    <input type="text" id="dyn_roll_no" name="roll_no" class="form-control" placeholder="e.g. 15" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Admission No.</label>
+                                                    <input type="text" id="dyn_admission_no" name="admission_no" class="form-control" placeholder="e.g. ADM-102" />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Date of Birth</label>
+                                                    <input type="text" id="dyn_dob" name="date_of_birth" class="form-control" placeholder="e.g. 12 Oct 2015" />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold text-dark">Student Photo URL / Path</label>
+                                                    <input type="text" id="dyn_student_photo_url" name="student_photo_url" class="form-control" placeholder="Auto-filled when student is selected" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 3: AUTHORITY & CERTIFICATE DETAILS -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                                        <div class="card-header bg-white py-3 border-bottom">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-info">3</span>
+                                                Authority & Certificate Details
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Issue Date</label>
+                                                    <input type="date" id="dyn_issue_date" name="issue_date" class="form-control" value="{{ date('Y-m-d') }}" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Report Type</label>
+                                                    <select id="dyn_report_type" name="report_type" class="form-select">
+                                                        <option value="Daily">Daily Report</option>
+                                                        <option value="Weekly">Weekly Report</option>
+                                                        <option value="Monthly" selected>Monthly Progress Card</option>
+                                                        <option value="Term">Term / Quarterly Card</option>
+                                                        <option value="Other">Other / Special</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Date / Month Period</label>
+                                                    <input type="text" id="dyn_date_period" name="date_period" class="form-control" value="{{ date('F Y') }}" placeholder="e.g. September 2026" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label fw-semibold text-dark">Focus Area / Subject</label>
+                                                    <input type="text" id="dyn_focus_area" name="focus_area" class="form-control" value="General Academics & Character" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 4: PERFORMANCE TRACKER (EXAMINATION MODULE DB) -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-4 border-primary">
+                                        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-primary">4</span>
+                                                <i data-lucide="bar-chart-2" class="text-primary me-1" style="width:1.1rem;height:1.1rem;"></i>
+                                                Performance Tracker (Subject-Wise Assessment)
+                                            </h6>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size:0.75rem;">
+                                                <i data-lucide="database" style="width:0.8rem;height:0.8rem;" class="me-1"></i>
+                                                Fetched from Examination Module DB (http://localhost:8000/examination)
+                                            </span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="dyn_exam_loading" style="display:none;" class="text-center py-4 text-muted">
+                                                <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                                Checking Examination database for student...
+                                            </div>
+                                            <div id="dyn_exam_content">
+                                                <div class="alert alert-light border text-muted mb-0 small text-center py-3">
+                                                    <i data-lucide="info" style="width:1.2rem;height:1.2rem;" class="me-1 text-primary"></i>
+                                                    Select a registered student above to auto-fetch examination performance data from database table.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 5: SKILLS & ATTRIBUTES (SKILLS INSTITUTE DB) -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-4 border-success">
+                                        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-success">5</span>
+                                                <i data-lucide="smile" class="text-success me-1" style="width:1.1rem;height:1.1rem;"></i>
+                                                Skills & Attributes (Personal & Social Development)
+                                            </h6>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size:0.75rem;">
+                                                <i data-lucide="database" style="width:0.8rem;height:0.8rem;" class="me-1"></i>
+                                                Fetched from Skills Institute DB (http://localhost:8000/skills-institute)
+                                            </span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="dyn_skills_content">
+                                                <div class="alert alert-light border text-muted mb-0 small text-center py-3">
+                                                    <i data-lucide="info" style="width:1.2rem;height:1.2rem;" class="me-1 text-success"></i>
+                                                    Select a registered student above to auto-fetch skills & personal development data from database table.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 6: STUDENT DISCIPLINE PERFORMANCE (DISCIPLINE MODULE DB) -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-4 border-warning">
+                                        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-warning text-dark">6</span>
+                                                <i data-lucide="shield-check" class="text-warning me-1" style="width:1.1rem;height:1.1rem;"></i>
+                                                Student Discipline Performance
+                                            </h6>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size:0.75rem;">
+                                                <i data-lucide="database" style="width:0.8rem;height:0.8rem;" class="me-1"></i>
+                                                Fetched from Discipline Module DB (http://localhost:8000/discipline)
+                                            </span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="dyn_discipline_content">
+                                                <div class="alert alert-light border text-muted mb-0 small text-center py-3">
+                                                    <i data-lucide="info" style="width:1.2rem;height:1.2rem;" class="me-1 text-warning"></i>
+                                                    Select a registered student above to auto-fetch discipline performance data from database table.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 7: QURAN DEVELOPMENT & PERFORMANCE (QURAN MODULE DB) -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4 border-start border-4 border-info">
+                                        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-info">7</span>
+                                                <i data-lucide="book-open" class="text-info me-1" style="width:1.1rem;height:1.1rem;"></i>
+                                                Quran Development & Performance
+                                            </h6>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1" style="font-size:0.75rem;">
+                                                <i data-lucide="database" style="width:0.8rem;height:0.8rem;" class="me-1"></i>
+                                                Fetched from Quran Module DB (http://localhost:8000/quran-module)
+                                            </span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div id="dyn_quran_content">
+                                                <div class="alert alert-light border text-muted mb-0 small text-center py-3">
+                                                    <i data-lucide="info" style="width:1.2rem;height:1.2rem;" class="me-1 text-info"></i>
+                                                    Select a registered student above to auto-fetch Quran module evaluation data from database table.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 8: REMARKS & ACTION PLAN -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                                        <div class="card-header bg-white py-3 border-bottom">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-secondary">8</span>
+                                                Remarks & Future Action Plan
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Teacher's Remarks</label>
+                                                    <textarea id="dyn_teacher_remarks" name="teacher_remarks" class="form-control" rows="3" placeholder="Enter teacher remarks...">Demonstrates exemplary academic performance and excellent moral conduct in school.</textarea>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Parent's Remarks</label>
+                                                    <textarea id="dyn_parent_remarks" name="parent_remarks" class="form-control" rows="3" placeholder="Enter parent remarks...">Very satisfied with student progress and school environment.</textarea>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Next Plan / Action Plan</label>
+                                                    <textarea id="dyn_action_plan" name="action_plan" class="form-control" rows="3" placeholder="Enter next plan...">Continue reading practice, participate in upcoming Tajweed competition & sports gala.</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 9: SIGNATURES -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                                        <div class="card-header bg-white py-3 border-bottom">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <span class="step-badge bg-dark">9</span>
+                                                Authority & Signatures <span class="text-muted fw-normal fs-6">(Leave blank for physical signature on print)</span>
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Class Teacher Name</label>
+                                                    <input type="text" id="dyn_class_teacher" name="class_teacher" class="form-control" placeholder="Leave blank or type teacher name..." />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Parent / Guardian Name</label>
+                                                    <input type="text" id="dyn_parent_guardian" name="parent_guardian" class="form-control" placeholder="Leave blank or type parent name..." />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold text-dark">Principal Name</label>
+                                                    <input type="text" id="dyn_principal" name="principal" class="form-control" placeholder="Leave blank or type principal name..." />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- DYNAMIC SUBMIT / ACTION CARD -->
+                                    <div class="card border-0 shadow-sm rounded-3 mb-4 bg-white border-top border-4 border-primary">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="rounded-3 d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-3" style="width: 54px; height: 54px; flex-shrink: 0;">
+                                                        <i data-lucide="printer" class="text-primary" style="width: 1.6rem; height: 1.6rem"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                                                            Generate & Print Dynamic Report Card
+                                                        </h6>
+                                                        <p class="text-muted small mb-0">
+                                                            Opens preview in a new tab with fetched database data → use <kbd>Ctrl+P</kbd> to print.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
+                                                    <a href="{{ route('certificates.index') }}" class="btn btn-outline-secondary px-4 py-2.5 fw-semibold">
+                                                        Cancel
+                                                    </a>
+                                                    <button
+                                                        type="submit"
+                                                        id="dyn_generate_btn"
+                                                        class="btn btn-primary btn-lg px-4 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2"
+                                                        disabled
+                                                    >
+                                                        <i data-lucide="printer" style="width: 1.25rem; height: 1.25rem"></i>
+                                                        Generate PDF / Print
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Container to dynamically inject hidden input fields -->
+                                    <div id="dyn_hidden_payload_container"></div>
+                                    </form> <!-- End #dynamicCertForm -->
+                                </div> <!-- End #tab-dynamic-pane -->
+                            </div> <!-- End #certTabContent -->
+                        @endif
+                    @endif
                 </div>
             </div>
+        @if ($type !== 'overall_performance')
         </form>
+        @endif
     </div>
 @endsection
 
@@ -1337,32 +1715,433 @@
                 });
             }
 
-            // ── Form submit guard: ensure recipient/student name is filled ─────────
-            certForm.addEventListener('submit', function (e) {
-                if (isExperienceType) return;
-                if (isAppreciationType) {
-                    const recipName = document.getElementById('app_recipient_name');
-                    if (recipName && !recipName.value.trim()) {
+            const manualCertForm = document.getElementById('manualCertForm');
+            const dynamicCertForm = document.getElementById('dynamicCertForm');
+
+            if (manualCertForm) {
+                manualCertForm.addEventListener('submit', function (e) {
+                    const inpN = document.querySelector('#manualCertForm [name="student_name"]');
+                    const hidN = document.getElementById('h_student_name');
+                    const studentName = (inpN && inpN.value.trim()) ? inpN.value.trim() : (hidN ? hidN.value.trim() : '');
+
+                    if (!studentName) {
                         e.preventDefault();
-                        alert('⚠️ Please enter or select a Recipient Name for Appreciation Certificate.');
-                        recipName.focus();
+                        alert('⚠️ Please enter or select a Student Name before generating the certificate.');
+                        if (inpN) inpN.focus();
                         return false;
                     }
+                });
+            }
+
+            if (dynamicCertForm) {
+                dynamicCertForm.addEventListener('submit', function (e) {
+                    const dynN = document.getElementById('dyn_student_name');
+                    const studentName = dynN ? dynN.value.trim() : '';
+
+                    const dynSess = document.getElementById('dyn_session_picker');
+                    const dynSessHidden = document.getElementById('dyn_session_hidden_input');
+                    if (dynSess && dynSessHidden && dynSess.selectedIndex >= 0) {
+                        const sessionOpt = dynSess.options[dynSess.selectedIndex];
+                        dynSessHidden.value = sessionOpt && sessionOpt.dataset ? sessionOpt.dataset.name : dynSess.value;
+                    }
+
+                    if (!studentName) {
+                        e.preventDefault();
+                        alert('⚠️ Please select a student from the dropdown or enter student name.');
+                        if (dynN) dynN.focus();
+                        return false;
+                    }
+                });
+            }
+
+            if (certForm) {
+                certForm.addEventListener('submit', function (e) {
+                    if (isExperienceType) return;
+                    if (isAppreciationType) {
+                        const recipName = document.getElementById('app_recipient_name');
+                        if (recipName && !recipName.value.trim()) {
+                            e.preventDefault();
+                            alert('⚠️ Please enter or select a Recipient Name for Appreciation Certificate.');
+                            recipName.focus();
+                            return false;
+                        }
+                        return;
+                    }
+
+                    const inpN = document.querySelector('[name="student_name"]');
+                    const hidN = document.getElementById('h_student_name');
+                    const studentName = (inpN && inpN.value.trim()) ? inpN.value.trim() : (hidN ? hidN.value.trim() : '');
+
+                    if (!studentName) {
+                        e.preventDefault();
+                        alert('⚠️ Please enter or select a Student Name before generating the certificate.');
+                        if (inpN) inpN.focus();
+                        return false;
+                    }
+                });
+            }
+
+            // ── DYNAMIC TAB MODULE DATA AUTO-FETCH LOGIC ───────────────────
+            const dynSessionPicker = document.getElementById('dyn_session_picker');
+            const dynClassPicker = document.getElementById('dyn_class_picker');
+            const dynStudentDropdown = document.getElementById('dyn_student_dropdown');
+            const dynStudentSearchInput = document.getElementById('dyn_student_search_input');
+            const dynStudentsLoading = document.getElementById('dyn_students_loading');
+            const dynNoStudents = document.getElementById('dyn_no_students');
+            const dynStudentCount = document.getElementById('dyn_student_count');
+            const dynGenerateBtn = document.getElementById('dyn_generate_btn');
+
+            let dynAllStudents = [];
+
+            function loadDynStudents() {
+                if (!dynClassPicker || !dynSessionPicker) return;
+                const sessionId = dynSessionPicker.value;
+                const sessionOpt = dynSessionPicker.options[dynSessionPicker.selectedIndex];
+                const sessionName = sessionOpt && sessionOpt.dataset ? sessionOpt.dataset.name : '';
+                const className = dynClassPicker.value.trim();
+
+                if (!className || !sessionId) {
+                    if (dynStudentDropdown) {
+                        dynStudentDropdown.disabled = true;
+                        dynStudentDropdown.innerHTML = '<option value="">— Select Class First —</option>';
+                    }
+                    const sWrap = document.getElementById('dyn_student_search_wrap');
+                    if (sWrap) sWrap.style.display = 'none';
                     return;
                 }
-                const inpN = document.getElementById('input_student_name');
-                const hidN = document.getElementById('h_student_name');
-                const studentName = (inpN && inpN.value.trim()) ? inpN.value.trim() : (hidN ? hidN.value.trim() : '');
-                if (!studentName) {
-                    e.preventDefault();
-                    alert('⚠️ Please enter or select a Student Name before generating the certificate.');
-                    if (inpN) {
-                        inpN.focus();
-                        inpN.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    return false;
+
+                if (dynStudentDropdown) dynStudentDropdown.innerHTML = '';
+                if (dynNoStudents) dynNoStudents.style.display = 'none';
+                if (dynStudentsLoading) dynStudentsLoading.style.display = 'block';
+                if (dynStudentSearchInput) dynStudentSearchInput.value = '';
+
+                const url = `{{ route('certificates.students-by-class') }}?class_name=${encodeURIComponent(className)}&academic_session_id=${encodeURIComponent(sessionId)}&academic_session=${encodeURIComponent(sessionName)}`;
+
+                fetch(url, { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', Accept: 'application/json' } })
+                    .then(r => r.json())
+                    .then(students => {
+                        if (dynStudentsLoading) dynStudentsLoading.style.display = 'none';
+                        dynAllStudents = students;
+
+                        if (!students.length) {
+                            if (dynNoStudents) {
+                                dynNoStudents.innerHTML = `No students found for <strong>Session ${sessionName}</strong> in <strong>${className}</strong>.`;
+                                dynNoStudents.style.display = 'block';
+                            }
+                            if (dynStudentCount) dynStudentCount.textContent = '0 students';
+                            if (dynStudentDropdown) {
+                                dynStudentDropdown.disabled = true;
+                                dynStudentDropdown.innerHTML = '<option value="">— No students in this class —</option>';
+                            }
+                            return;
+                        }
+
+                        if (dynStudentCount) dynStudentCount.textContent = students.length + ' student' + (students.length > 1 ? 's' : '');
+                        const sWrap = document.getElementById('dyn_student_search_wrap');
+                        if (sWrap) sWrap.style.display = 'block';
+                        if (dynStudentDropdown) dynStudentDropdown.disabled = false;
+                        populateDynStudentDropdown(students);
+                    })
+                    .catch(() => {
+                        if (dynStudentsLoading) dynStudentsLoading.style.display = 'none';
+                        if (dynNoStudents) {
+                            dynNoStudents.innerHTML = '<span class="text-danger">Failed to load students. Please try again.</span>';
+                            dynNoStudents.style.display = 'block';
+                        }
+                    });
+            }
+
+            if (dynSessionPicker) dynSessionPicker.addEventListener('change', loadDynStudents);
+            if (dynClassPicker) dynClassPicker.addEventListener('change', loadDynStudents);
+
+            if (dynSessionPicker && dynClassPicker && dynSessionPicker.value && dynClassPicker.value) {
+                loadDynStudents();
+            }
+
+            function populateDynStudentDropdown(students) {
+                if (!dynStudentDropdown) return;
+                dynStudentDropdown.innerHTML = '';
+
+                if (!students.length) {
+                    const opt = document.createElement('option');
+                    opt.textContent = '— No matching students found —';
+                    opt.disabled = true;
+                    dynStudentDropdown.appendChild(opt);
+                    return;
                 }
-            });
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = `— Select Student (${students.length} found) —`;
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                dynStudentDropdown.appendChild(placeholder);
+
+                students.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    const sectionLabel = s.section_name ? `, Sec: ${s.section_name}` : '';
+                    opt.textContent = `${s.student_name}  —  Father: ${s.father_name || 'N/A'}  (Adm# ${s.admission_no || 'N/A'}, Roll# ${s.roll_no || 'N/A'}${sectionLabel})`;
+                    opt.dataset.json = JSON.stringify(s);
+                    dynStudentDropdown.appendChild(opt);
+                });
+            }
+
+            if (dynStudentSearchInput) {
+                dynStudentSearchInput.addEventListener('input', function() {
+                    const q = this.value.toLowerCase().trim();
+                    const filtered = !q ? dynAllStudents : dynAllStudents.filter(s =>
+                        s.student_name.toLowerCase().includes(q) ||
+                        (s.father_name || '').toLowerCase().includes(q) ||
+                        (s.admission_no || '').toLowerCase().includes(q) ||
+                        String(s.roll_no || '').toLowerCase().includes(q)
+                    );
+                    populateDynStudentDropdown(filtered);
+                });
+            }
+
+            // Handles student selection in Dynamic Tab
+            function handleDynStudentSelect() {
+                if (!dynStudentDropdown) return;
+                const selectedOpt = dynStudentDropdown.options[dynStudentDropdown.selectedIndex];
+                if (!selectedOpt || !selectedOpt.dataset || !selectedOpt.dataset.json) return;
+
+                let s;
+                try { s = JSON.parse(selectedOpt.dataset.json); } catch(e) { return; }
+
+                // Auto-fill Section 2 Profile Information
+                if (document.getElementById('dyn_student_name'))      document.getElementById('dyn_student_name').value      = s.student_name || '';
+                if (document.getElementById('dyn_father_name'))       document.getElementById('dyn_father_name').value       = s.father_name || '';
+                if (document.getElementById('dyn_class_name'))        document.getElementById('dyn_class_name').value        = s.class_name || '';
+                if (document.getElementById('dyn_section'))           document.getElementById('dyn_section').value           = s.section_name || '';
+                if (document.getElementById('dyn_roll_no'))            document.getElementById('dyn_roll_no').value            = s.roll_no || '';
+                if (document.getElementById('dyn_admission_no'))      document.getElementById('dyn_admission_no').value      = s.admission_no || '';
+                if (document.getElementById('dyn_dob'))               document.getElementById('dyn_dob').value               = s.date_of_birth || '';
+                if (document.getElementById('dyn_student_photo_url')) document.getElementById('dyn_student_photo_url').value = s.student_photo_url || '';
+
+                if (dynGenerateBtn) dynGenerateBtn.disabled = false;
+                if (generateBtn) generateBtn.disabled = false;
+
+                // Call AJAX to fetch DB records from Examination, Skills, Discipline, Quran
+                fetchDynStudentModuleDetails(s.id, s.admission_no);
+            }
+
+            if (dynStudentDropdown) {
+                dynStudentDropdown.addEventListener('change', handleDynStudentSelect);
+                dynStudentDropdown.addEventListener('click',  handleDynStudentSelect);
+            }
+
+            function fetchDynStudentModuleDetails(studentId, admissionNo) {
+                const examLoading = document.getElementById('dyn_exam_loading');
+                const examContent = document.getElementById('dyn_exam_content');
+                const skillsContent = document.getElementById('dyn_skills_content');
+                const disciplineContent = document.getElementById('dyn_discipline_content');
+                const quranContent = document.getElementById('dyn_quran_content');
+                const hiddenContainer = document.getElementById('dyn_hidden_payload_container');
+
+                if (examLoading) examLoading.style.display = 'block';
+
+                const url = `{{ route('certificates.student-module-details') }}?student_id=${encodeURIComponent(studentId)}&admission_no=${encodeURIComponent(admissionNo || '')}`;
+
+                fetch(url, { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', Accept: 'application/json' } })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (examLoading) examLoading.style.display = 'none';
+                        if (!res || !res.success) return;
+
+                        if (hiddenContainer) hiddenContainer.innerHTML = '';
+
+                        // ── 1. SECTION 4: EXAMINATION PERFORMANCE TRACKER ─────────────────────
+                        if (examContent) {
+                            if (res.examination && res.examination.length > 0) {
+                                let html = `<div class="table-responsive">
+                                    <table class="table table-sm table-bordered bg-white align-middle mb-0" style="font-size:0.875rem;">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Subject</th>
+                                                <th class="text-center">Exam Title</th>
+                                                <th class="text-center">Marks Obtained</th>
+                                                <th class="text-center">Rating</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
+                                res.examination.forEach((ex, idx) => {
+                                    const ratingBadge = ex.rating === 'excellent' ? '<span class="badge bg-success">★ Excellent</span>' :
+                                                        ex.rating === 'good' ? '<span class="badge bg-primary">👍 Good</span>' :
+                                                        ex.rating === 'average' ? '<span class="badge bg-warning text-dark">Average</span>' :
+                                                        '<span class="badge bg-danger">! Needs Imp.</span>';
+
+                                    html += `<tr>
+                                        <td class="fw-bold text-dark">${ex.subject}</td>
+                                        <td class="text-center text-muted small">${ex.exam_title}</td>
+                                        <td class="text-center fw-bold">${ex.is_absent ? '<span class="text-danger">Absent</span>' : ex.marks_obtained + ' / ' + ex.total_marks + ' (' + ex.percentage + '%)'}</td>
+                                        <td class="text-center">${ratingBadge}</td>
+                                        <td>${ex.remarks || ''}</td>
+                                    </tr>`;
+
+                                    if (hiddenContainer) {
+                                        hiddenContainer.innerHTML += `
+                                            <input type="hidden" name="performance_tracker[${idx}][subject]" value="${ex.subject}">
+                                            <input type="hidden" name="performance_tracker[${idx}][exam_title]" value="${ex.exam_title || ''}">
+                                            <input type="hidden" name="performance_tracker[${idx}][marks_obtained]" value="${ex.marks_obtained || ''}">
+                                            <input type="hidden" name="performance_tracker[${idx}][total_marks]" value="${ex.total_marks || ''}">
+                                            <input type="hidden" name="performance_tracker[${idx}][percentage]" value="${ex.percentage || ''}">
+                                            <input type="hidden" name="performance_tracker[${idx}][is_absent]" value="${ex.is_absent ? '1' : '0'}">
+                                            <input type="hidden" name="performance_tracker[${idx}][rating]" value="${ex.rating}">
+                                            <input type="hidden" name="performance_tracker[${idx}][remarks]" value="${ex.remarks || ''}">
+                                        `;
+                                    }
+                                });
+                                html += `</tbody></table></div>`;
+                                examContent.innerHTML = html;
+                            } else {
+                                examContent.innerHTML = `<div class="alert alert-warning mb-0 small border-warning">
+                                    <i data-lucide="alert-circle" style="width:1.1rem;height:1.1rem;" class="me-1"></i>
+                                    No examination mark records found in database table (<strong>http://localhost:8000/examination</strong>) for this student.
+                                </div>`;
+                            }
+                        }
+
+                        // ── 2. SECTION 5: SKILLS & ATTRIBUTES ─────────────────────────────────
+                        if (skillsContent) {
+                            if (res.skills && res.skills.length > 0) {
+                                let html = `<div class="table-responsive">
+                                    <table class="table table-sm table-bordered bg-white align-middle mb-0" style="font-size:0.875rem;">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Skill Area</th>
+                                                <th>Category</th>
+                                                <th class="text-center">Star Rating / Badge</th>
+                                                <th>Instructor Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
+                                res.skills.forEach((sk, idx) => {
+                                    html += `<tr>
+                                        <td class="fw-bold text-dark">${sk.skill}</td>
+                                        <td><span class="badge bg-light text-dark border">${sk.category}</span></td>
+                                        <td class="text-center fw-bold text-warning">${sk.star_rating} ★ (${sk.badge_level})</td>
+                                        <td>${sk.remarks || ''}</td>
+                                    </tr>`;
+
+                                    if (hiddenContainer) {
+                                        hiddenContainer.innerHTML += `
+                                            <input type="hidden" name="skills_attributes[${idx}][skill]" value="${sk.skill}">
+                                            <input type="hidden" name="skills_attributes[${idx}][category]" value="${sk.category || ''}">
+                                            <input type="hidden" name="skills_attributes[${idx}][star_rating]" value="${sk.star_rating || ''}">
+                                            <input type="hidden" name="skills_attributes[${idx}][badge_level]" value="${sk.badge_level || ''}">
+                                            <input type="hidden" name="skills_attributes[${idx}][rating]" value="${sk.rating}">
+                                            <input type="hidden" name="skills_attributes[${idx}][remarks]" value="${sk.remarks || ''}">
+                                        `;
+                                    }
+                                });
+                                html += `</tbody></table></div>`;
+                                skillsContent.innerHTML = html;
+                            } else {
+                                skillsContent.innerHTML = `<div class="alert alert-warning mb-0 small border-warning">
+                                    <i data-lucide="alert-circle" style="width:1.1rem;height:1.1rem;" class="me-1"></i>
+                                    No skill assessment records found in database table (<strong>http://localhost:8000/skills-institute</strong>) for this student.
+                                </div>`;
+                            }
+                        }
+
+                        // ── 3. SECTION 6: DISCIPLINE PERFORMANCE ──────────────────────────────
+                        if (disciplineContent) {
+                            if (res.discipline && res.discipline.length > 0) {
+                                let html = `<div class="row g-2">`;
+                                res.discipline.forEach((d, idx) => {
+                                    html += `<div class="col-md-6">
+                                        <div class="border rounded-3 p-3 bg-light">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <h6 class="fw-bold text-dark mb-0">${d.title}</h6>
+                                                <span class="badge bg-warning text-dark fw-bold">${d.star_rating} ★</span>
+                                            </div>
+                                            <p class="text-muted small mb-1">Category: <strong>${d.category}</strong> ${d.entry_date ? '| Date: ' + d.entry_date : ''}</p>
+                                            <p class="small text-dark mb-0">${d.remarks ? '<em>"' + d.remarks + '"</em>' : 'Score: ' + d.obtained + '/' + d.total_score}</p>
+                                        </div>
+                                    </div>`;
+
+                                    if (hiddenContainer) {
+                                        hiddenContainer.innerHTML += `
+                                            <input type="hidden" name="discipline[${idx}][title]" value="${d.title || ''}">
+                                            <input type="hidden" name="discipline[${idx}][category]" value="${d.category || ''}">
+                                            <input type="hidden" name="discipline[${idx}][star_rating]" value="${d.star_rating || ''}">
+                                            <input type="hidden" name="discipline[${idx}][obtained]" value="${d.obtained || ''}">
+                                            <input type="hidden" name="discipline[${idx}][total_score]" value="${d.total_score || ''}">
+                                            <input type="hidden" name="discipline[${idx}][remarks]" value="${d.remarks || ''}">
+                                        `;
+                                    }
+                                });
+                                html += `</div>`;
+                                disciplineContent.innerHTML = html;
+                            } else {
+                                disciplineContent.innerHTML = `<div class="alert alert-warning mb-0 small border-warning">
+                                    <i data-lucide="alert-circle" style="width:1.1rem;height:1.1rem;" class="me-1"></i>
+                                    No discipline evaluation records found in database table (<strong>http://localhost:8000/discipline</strong>) for this student.
+                                </div>`;
+                            }
+                        }
+
+                        // ── 4. SECTION 7: QURAN DEVELOPMENT & PERFORMANCE ──────────────────────
+                        if (quranContent) {
+                            if (res.quran && res.quran.length > 0) {
+                                let html = `<div class="row g-2">`;
+                                res.quran.forEach((q, idx) => {
+                                    html += `<div class="col-md-6">
+                                        <div class="border rounded-3 p-3 bg-light">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <h6 class="fw-bold text-dark mb-0">Category: ${q.category}</h6>
+                                                <span class="badge bg-success">${q.status}</span>
+                                            </div>
+                                            <p class="text-muted small mb-1">
+                                                ${q.para_no ? 'Para #: <strong>' + q.para_no + '</strong> ' : ''}
+                                                ${q.surah_name ? '| Surah: <strong>' + q.surah_name + '</strong> ' : ''}
+                                                ${q.ayah_range ? '(' + q.ayah_range + ')' : ''}
+                                            </p>
+                                            <p class="small text-dark mb-0">Score: <strong>${q.score}</strong> | Parahs Memorized: <strong>${q.total_memorized || 0}</strong> | Mistakes: <strong>${q.mistakes || 0}</strong></p>
+                                            ${q.notes ? '<p class="small text-muted mb-0 mt-1">Notes: ' + q.notes + '</p>' : ''}
+                                        </div>
+                                    </div>`;
+
+                                    if (hiddenContainer) {
+                                        hiddenContainer.innerHTML += `
+                                            <input type="hidden" name="quran[${idx}][category]" value="${q.category || ''}">
+                                            <input type="hidden" name="quran[${idx}][status]" value="${q.status || ''}">
+                                            <input type="hidden" name="quran[${idx}][para_no]" value="${q.para_no || ''}">
+                                            <input type="hidden" name="quran[${idx}][surah_name]" value="${q.surah_name || ''}">
+                                            <input type="hidden" name="quran[${idx}][score]" value="${q.score || ''}">
+                                            <input type="hidden" name="quran[${idx}][total_memorized]" value="${q.total_memorized || 0}">
+                                            <input type="hidden" name="quran[${idx}][mistakes]" value="${q.mistakes || 0}">
+                                            <input type="hidden" name="quran[${idx}][notes]" value="${q.notes || ''}">
+                                        `;
+                                    }
+                                });
+                                html += `</div>`;
+                                quranContent.innerHTML = html;
+                            } else {
+                                quranContent.innerHTML = `<div class="alert alert-warning mb-0 small border-warning">
+                                    <i data-lucide="alert-circle" style="width:1.1rem;height:1.1rem;" class="me-1"></i>
+                                    No Quran module evaluation records found in database table (<strong>http://localhost:8000/quran-module</strong>) for this student.
+                                </div>`;
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        if (examLoading) examLoading.style.display = 'none';
+                    });
+            }
+
+            if (dynGenerateBtn) {
+                dynGenerateBtn.addEventListener('click', function (e) {
+                    if (this.disabled) {
+                        e.preventDefault();
+                        alert('⚠️ Please select a student from the dropdown or enter student name.');
+                        return false;
+                    }
+                    syncDynamicValuesToForm();
+                });
+            }
 
             // ── Clear helper ─────────────────────────────────────────────
             function clearStudentPreview() {

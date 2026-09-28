@@ -117,6 +117,7 @@ Route::middleware(['auth', 'active', 'track.activity'])->group(function () {
 
 	Route::resource('backup', BackupController::class)->except(['store', 'update', 'destroy']);
 	Route::get('certificates/students-by-class', [CertificateController::class, 'getStudentsByClass'])->name('certificates.students-by-class');
+	Route::get('certificates/student-module-details', [CertificateController::class, 'getStudentModuleDetails'])->name('certificates.student-module-details');
 	Route::post('certificates/print', [CertificateController::class, 'print'])->name('certificates.print');
 	Route::resource('certificates', CertificateController::class)->except(['store', 'update', 'destroy']);
 	Route::get('classes/trash', [StudentClassController::class, 'trash'])->name('classes.trash');

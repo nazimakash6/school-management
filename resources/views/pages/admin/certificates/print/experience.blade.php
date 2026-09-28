@@ -22,25 +22,45 @@
   /* ===== PRINT A4 PORTRAIT PAGE SETUP ===== */
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 0mm !important;
   }
 
   @media print {
-    body { background: #fff; }
-    .no-print { display: none !important; }
+    html, body {
+      width: 210mm !important;
+      height: 297mm !important;
+      max-height: 297mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      background: #fff !important;
+    }
+
+    .no-print, .no-print-bar {
+      display: none !important;
+    }
+
     .cert-page {
       box-shadow: none !important;
       margin: 0 !important;
-      width: 100% !important;
-      height: auto !important;
-      page-break-after: avoid;
+      width: 210mm !important;
+      height: 297mm !important;
+      max-height: 297mm !important;
+      padding: 5mm !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+      page-break-before: avoid !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
     }
   }
 
   /* ===== PORTRAIT CONTAINER ===== */
   .cert-page {
     width: 210mm;
-    height: auto;
+    max-width: 210mm;
+    height: 297mm;
+    max-height: 297mm;
     margin: 15px auto;
     background: #fdfaf3;
     position: relative;
@@ -48,6 +68,7 @@
     box-shadow: 0 12px 45px rgba(61,26,6,0.35);
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
   }
 
   /* Watermark Mosque Background Illusion */

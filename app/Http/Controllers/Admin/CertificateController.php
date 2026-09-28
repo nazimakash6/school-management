@@ -221,6 +221,169 @@ class CertificateController extends Controller
         return response()->json($mapped);
     }
 
+    /**
+     * AJAX: Return student's multi-module data (Examination, Skills, Discipline, Quran) as JSON
+     */
+    public function getStudentModuleDetails(Request $request)
+    {
+        $studentId   = $request->get('student_id');
+        $admissionNo = $request->get('admission_no');
+
+        $student   = null;
+        $admission = null;
+
+        if ($studentId) {
+            $student = Student::find($studentId);
+            if (!$student) {
+                $admission = Admission::find($studentId);
+            }
+        }
+
+        if (!$student && $admissionNo) {
+            $student = Student::where('admission_no', $admissionNo)->first();
+            if (!$student) {
+                $admission = Admission::where('admission_no', $admissionNo)->first();
+            }
+        }
+
+        if ($student && !$admission) {
+            $admission = Admission::where('admission_no', $student->admission_no)->first();
+        }
+
+        if (!$admission && $student) {
+            $admission = $student;
+        }
+
+        $sId   = $student ? $student->id : null;
+        $admId = $admission ? $admission->id : null;
+        $admNo = $student ? $student->admission_no : ($admission ? $admission->admission_no : null);
+
+        // 1. EXAMINATION MODULE DATA (from http://localhost:8000/examination)
+        $examMarks = \App\Models\ExamMark::with(['examination.examType', 'examination.academicSession'])
+            ->where(function ($q) use ($admId, $admNo) {
+                if ($admId) {
+                    $q->where('admission_id', $admId);
+                }
+                if ($admNo) {
+                    $q->orWhereHas('admission', function ($sub) use ($admNo) {
+                        $sub->where('admission_no', $admNo);
+                    });
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $formattedExam = $examMarks->map(function ($m) {
+            $obtained = (float) $m->marks_obtained;
+            $total    = (float) ($m->total_marks ?: 100);
+            $pct      = $total > 0 ? ($obtained / $total) * 100 : 0;
+
+            $rating = 'good';
+            if ($m->is_absent || $pct < 40) {
+                $rating = 'needs_improvement';
+            } elseif ($pct >= 80) {
+                $rating = 'excellent';
+            } elseif ($pct >= 60) {
+                $rating = 'good';
+            } else {
+                $rating = 'average';
+            }
+
+            return [
+                'subject'        => $m->subject_name,
+                'marks_obtained' => $obtained,
+                'total_marks'    => $total,
+                'percentage'     => round($pct, 1),
+                'is_absent'      => (bool) $m->is_absent,
+                'rating'         => $rating,
+                'remarks'        => $m->remarks ?: "Scored {$obtained}/{$total} (" . round($pct, 1) . "%)",
+                'exam_title'     => $m->examination ? $m->examination->title : 'Examination',
+            ];
+        });
+
+        // 2. SKILLS INSTITUTE MODULE DATA (from http://localhost:8000/skills-institute)
+        $skillsRecords = \App\Models\StudentSkill::where(function ($q) use ($sId, $admId) {
+            if ($sId) $q->where('student_id', $sId);
+            if ($admId) $q->orWhere('student_id', $admId);
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        $formattedSkills = collect();
+        foreach ($skillsRecords as $skRec) {
+            $skillsList = $skRec->skills_list;
+            foreach ($skillsList as $skItem) {
+                $starRating = (float) ($skItem['star_rating'] ?? $skRec->star_rating ?? 5.0);
+                $skRating = 'good';
+                if ($starRating >= 4.5)     $skRating = 'excellent';
+                elseif ($starRating >= 3.5) $skRating = 'good';
+                elseif ($starRating >= 2.5) $skRating = 'average';
+                else                        $skRating = 'needs_improvement';
+
+                $formattedSkills->push([
+                    'skill'      => $skItem['skill_name'] ?? $skRec->skill_name ?? 'Skill',
+                    'category'   => $skItem['skill_category'] ?? $skRec->skill_category ?? 'General',
+                    'star_rating'=> $starRating,
+                    'badge_level'=> $skItem['badge_level'] ?? $skRec->badge_level ?? 'Proficient',
+                    'rating'     => $skRating,
+                    'remarks'    => $skItem['instructor_notes'] ?? $skRec->instructor_notes ?? '',
+                ]);
+            }
+        }
+
+        // 3. DISCIPLINE MODULE DATA (from http://localhost:8000/discipline)
+        $disciplineRecords = \App\Models\StudentDiscipline::where(function ($q) use ($sId, $admId) {
+            if ($sId) $q->where('student_id', $sId);
+            if ($admId) $q->orWhere('student_id', $admId);
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        $formattedDiscipline = $disciplineRecords->map(function ($d) {
+            return [
+                'title'       => $d->title ?: 'Discipline Evaluation',
+                'category'    => $d->category ?: 'Behavior',
+                'star_rating' => (float) $d->star_rating,
+                'total_score' => (float) $d->total_score,
+                'obtained'    => (float) $d->obtained_score,
+                'remarks'     => $d->remarks ?: '',
+                'entry_date'  => $d->entry_date ? $d->entry_date->format('d M, Y') : '',
+            ];
+        });
+
+        // 4. QURAN MODULE DATA (from http://localhost:8000/quran-module)
+        $quranRecords = \App\Models\QuranModule::where(function ($q) use ($sId, $admId) {
+            if ($sId) $q->where('student_id', $sId);
+            if ($admId) $q->orWhere('student_id', $admId);
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        $formattedQuran = $quranRecords->map(function ($q) {
+            return [
+                'category'       => $q->category ?: 'Nazra / Hifz',
+                'para_no'        => $q->para_no,
+                'surah_name'     => $q->surah_name,
+                'ayah_range'     => $q->formatted_ayah_range,
+                'score'          => (float) $q->score,
+                'total_memorized'=> $q->total_parahs_memorized,
+                'mistakes'       => $q->mistakes_count,
+                'status'         => $q->status ?: 'Passed',
+                'notes'          => $q->notes ?: '',
+                'entry_date'     => $q->entry_date ? $q->entry_date->format('d M, Y') : '',
+            ];
+        });
+
+        return response()->json([
+            'success'     => true,
+            'student'     => $student ?: $admission,
+            'examination' => $formattedExam,
+            'skills'      => $formattedSkills,
+            'discipline'  => $formattedDiscipline,
+            'quran'       => $formattedQuran,
+        ]);
+    }
+
     public function print(Request $request)
     {
         $type        = $request->get('type', 'school_leaving');
@@ -258,6 +421,7 @@ class CertificateController extends Controller
         }
 
         $data = [
+            'entry_mode'          => $request->get('entry_mode', 'manual'),
             'staff_name'          => $request->get('staff_name', $request->get('student_name', '')),
             'student_name'        => $request->get('student_name', $request->get('staff_name', '')),
             'recipient_name'      => $request->get('recipient_name', $request->get('staff_name', $request->get('student_name', ''))),
@@ -290,6 +454,8 @@ class CertificateController extends Controller
             'focus_area'          => $request->get('focus_area', ''),
             'performance_tracker' => $request->get('performance_tracker', []),
             'skills_attributes'   => $request->get('skills_attributes', []),
+            'discipline'          => $request->get('discipline', []),
+            'quran'               => $request->get('quran', []),
             'learning_highlights' => $request->get('learning_highlights', ''),
             'areas_to_improve'    => $request->get('areas_to_improve', ''),
             'attendance_total'    => $request->get('attendance_total', ''),
